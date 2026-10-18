@@ -21,7 +21,7 @@ function cleanPlayers(list) {
   try {
     const info = await queryInfo(GMOD_HOST, GMOD_PORT, 5000);
     let playerList = [];
-    for (let essai = 1; essai <= 3; essai++) {
+    for (let essai = 1; essai <= 1; essai++) {
       try {
         const raw = await queryPlayers(GMOD_HOST, GMOD_PORT, 5000);
         console.log(`Liste des joueurs : ${raw.length} reçus`);
