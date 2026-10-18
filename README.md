@@ -30,4 +30,6 @@ et `players`, vide si le serveur était hors ligne). Sur GitHub, ce fichier est 
 branche `data`, qui ne contient qu'un seul commit réécrit à chaque mise à jour.
 
 La page affiche des graphiques par jour, semaine et mois, avec la moyenne, le pic et le creux,
-et des flèches pour revenir aux périodes précédentes.
+et des flèches pour revenir aux périodes précédentes. À droite, les records : meilleur et pire
+jour, semaine et mois (en moyenne de joueurs). Seules les périodes terminées et couvertes au moins
+à moitié par des relevés comptent ; un clic sur un record l'affiche dans le graphique.

@@ -12,17 +12,41 @@
       font-family: system-ui, sans-serif;
       text-align: center;
     }
-    .top {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    p { font-size: 1.5rem; margin: 0; }
-    #players { font-size: 10rem; font-weight: bold; line-height: 1.1; }
+    .top { padding: 24px 16px 8px; }
+    p { font-size: 1.3rem; margin: 0; }
+    #players { font-size: 6rem; font-weight: bold; line-height: 1.1; }
 
-    section { max-width: 760px; margin: 0 auto; padding: 0 16px 48px; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 24px;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 16px 48px;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+    aside { text-align: left; }
+    aside h2 { font-size: 1.1rem; margin: 6px 0 12px; text-align: center; }
+    aside h3 { font-size: .85rem; color: #888; font-weight: normal; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .rec {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      width: 100%;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #fff;
+      text-align: left;
+    }
+    .rec:hover { border-color: #555; }
+    .rec span { color: #888; font-size: .85rem; }
+    .rec em { font-style: normal; color: #888; font-size: .85rem; display: block; }
+    .rec strong { font-size: 1.3rem; white-space: nowrap; }
+    #rec-empty { color: #888; font-size: .9rem; text-align: center; }
     .tabs, .nav { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; }
     button {
       background: none;
@@ -37,7 +61,7 @@
     button:disabled { opacity: .3; cursor: default; }
     #period { min-width: 220px; font-size: 1.1rem; }
     .chart { position: relative; }
-    svg { width: 100%; height: 260px; display: block; overflow: visible; }
+    svg { width: 100%; height: 240px; display: block; overflow: visible; }
     svg .grid { stroke: #222; }
     svg .axis { fill: #888; font-size: 11px; }
     svg .line { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
@@ -76,6 +100,7 @@
     <div id="players">…</div>
   </div>
 
+  <main>
   <section>
     <div class="tabs">
       <button data-view="day" class="on">Jour</button>
@@ -88,7 +113,7 @@
       <button id="next" aria-label="Période suivante">›</button>
     </div>
     <div class="chart">
-      <svg id="chart" viewBox="0 0 700 260" role="img" aria-label="Nombre de joueurs sur la période"></svg>
+      <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
     <p id="nodata" hidden>Pas encore de données pour cette période.</p>
@@ -98,6 +123,13 @@
       <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
     </div>
   </section>
+
+  <aside>
+    <h2>Records</h2>
+    <div id="records"></div>
+    <p id="rec-empty">Les records apparaîtront après le premier jour complet.</p>
+  </aside>
+  </main>
 
   <ul id="list"></ul>
 
@@ -143,28 +175,29 @@
         }).filter((p) => p.t);
       } catch { /* on garde l'ancien historique */ }
       draw();
+      records();
     }
 
     // ---------- Périodes ----------
-    function period() {
+    function period(v = view, off = offset) {
       const d = new Date();
       d.setHours(0, 0, 0, 0);
-      if (view === 'day') {
-        d.setDate(d.getDate() + offset);
+      if (v === 'day') {
+        d.setDate(d.getDate() + off);
         const end = new Date(d); end.setDate(end.getDate() + 1);
         return { start: +d, end: +end, bucket: 0,
-          label: offset === 0 ? "Aujourd'hui" : d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
+          label: off === 0 ? "Aujourd'hui" : d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
       }
-      if (view === 'week') {
-        d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7); // lundi
+      if (v === 'week') {
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + off * 7); // lundi
         const end = new Date(d); end.setDate(end.getDate() + 7);
         const last = new Date(end - DAY);
         const f = (x) => x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
         return { start: +d, end: +end, bucket: HOUR,
-          label: offset === 0 ? 'Cette semaine' : `${f(d)} – ${f(last)}` };
+          label: off === 0 ? 'Cette semaine' : `${f(d)} – ${f(last)}` };
       }
       d.setDate(1);
-      d.setMonth(d.getMonth() + offset);
+      d.setMonth(d.getMonth() + off);
       const end = new Date(d); end.setMonth(end.getMonth() + 1);
       const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
       return { start: +d, end: +end, bucket: 4 * HOUR, label: label[0].toUpperCase() + label.slice(1) };
@@ -201,10 +234,13 @@
     }
 
     // ---------- Graphique ----------
-    const W = 700, H = 260, L = 34, R = 8, T = 10, B = 24;
+    const H = 240, L = 34, R = 8, T = 10, B = 24;
+    let W = 700; // largeur réelle du graphique, recalculée à chaque dessin
     let drawn = null;
 
     function draw() {
+      W = Math.max(280, Math.round($('chart').getBoundingClientRect().width));
+      $('chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
       const p = period();
       $('period').textContent = p.label;
       $('next').disabled = offset >= 0;
@@ -264,16 +300,91 @@
       }
     }
 
+    // ---------- Records ----------
+    // Moyenne de joueurs par jour / semaine / mois. Seules les périodes terminées et
+    // suffisamment couvertes (au moins la moitié des heures avec un relevé) comptent.
+    const KINDS = [
+      ['day', 'Jours', 'Meilleur jour', 'Pire jour'],
+      ['week', 'Semaines', 'Meilleure semaine', 'Pire semaine'],
+      ['month', 'Mois', 'Meilleur mois', 'Pire mois'],
+    ];
+
+    function periodsOf(v) {
+      const out = [];
+      if (!history.length) return out;
+      for (let off = 0; ; off--) {
+        const p = period(v, off);
+        if (p.end <= history[0].t) break;
+        out.push({ ...p, off });
+      }
+      return out;
+    }
+
+    function records() {
+      const now = Date.now();
+      const box = $('records');
+      box.replaceChildren();
+      let any = false;
+      for (const [v, title, bestLabel, worstLabel] of KINDS) {
+        const done = [];
+        for (const p of periodsOf(v)) {
+          if (p.end > now) continue;
+          const pts = history.filter((x) => x.t >= p.start && x.t < p.end && x.players !== null);
+          const hours = new Set(pts.map((x) => Math.floor(x.t / HOUR))).size;
+          if (!pts.length || hours < (p.end - p.start) / HOUR / 2) continue;
+          done.push({ ...p, avg: pts.reduce((a, x) => a + x.players, 0) / pts.length });
+        }
+        if (!done.length) continue;
+        any = true;
+        const best = done.reduce((a, b) => (b.avg > a.avg ? b : a));
+        const worst = done.reduce((a, b) => (b.avg < a.avg ? b : a));
+        const h3 = document.createElement('h3');
+        h3.textContent = title;
+        box.append(h3, recRow(bestLabel, best, v));
+        if (done.length > 1) box.append(recRow(worstLabel, worst, v));
+      }
+      $('rec-empty').hidden = any;
+    }
+
+    function recLabel(p, v) {
+      const d = new Date(p.start);
+      if (v === 'day') return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+      if (v === 'week') {
+        const f = (x) => x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        return `${f(d)} – ${f(new Date(p.end - DAY))}`;
+      }
+      const m = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return m[0].toUpperCase() + m.slice(1);
+    }
+
+    // Une ligne de record ; un clic affiche la période dans le graphique
+    function recRow(label, p, v) {
+      const b = document.createElement('button');
+      b.className = 'rec';
+      b.innerHTML = `<div><span></span><em></em></div><strong></strong>`;
+      b.querySelector('span').textContent = label;
+      b.querySelector('em').textContent = recLabel(p, v);
+      b.querySelector('strong').textContent = `${p.avg.toFixed(1).replace('.', ',')} moy.`;
+      b.addEventListener('click', () => {
+        view = v;
+        offset = p.off;
+        document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o.dataset.view === v));
+        draw();
+      });
+      return b;
+    }
+
     function ticks(p) {
       const out = [];
       if (view === 'day') {
-        for (let h = 0; h <= 24; h += 3) out.push([p.start + h * HOUR, `${h}h`]);
+        const step = W < 500 ? 6 : 3;
+        for (let h = 0; h <= 24; h += step) out.push([p.start + h * HOUR, `${h}h`]);
       } else if (view === 'week') {
         ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].forEach((d, i) => out.push([p.start + (i + 0.5) * DAY, d]));
       } else {
         const d = new Date(p.start);
         while (+d < p.end) {
-          if ([1, 5, 10, 15, 20, 25].includes(d.getDate())) out.push([+d + DAY / 2, d.getDate()]);
+          if ((W < 500 ? [1, 10, 20] : [1, 5, 10, 15, 20, 25]).includes(d.getDate())) out.push([+d + DAY / 2, d.getDate()]);
           d.setDate(d.getDate() + 1);
         }
       }
@@ -314,6 +425,7 @@
       offset = 0;
       draw();
     }));
+    window.addEventListener('resize', draw);
     $('prev').addEventListener('click', () => { offset--; draw(); });
     $('next').addEventListener('click', () => { offset++; draw(); });
 
