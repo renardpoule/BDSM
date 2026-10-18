@@ -140,6 +140,10 @@
     svg .prev { fill: none; stroke: #888; stroke-width: 1.5; stroke-dasharray: 5 4; }
     svg .mapchg { stroke: #4fc3f7; stroke-width: 1.5; stroke-dasharray: 3 3; }
     svg .maplbl { fill: #4fc3f7; font-size: 11px; }
+    svg .out { fill: url(#hatch-crash); }
+    svg .out.reboot { fill: url(#hatch-reboot); }
+    svg .out-lbl { fill: #ef5350; font-size: 11px; }
+    .legend i.out { border: none; height: 10px; width: 14px; background: repeating-linear-gradient(45deg, #ef5350 0 2px, transparent 2px 5px); }
     svg .hol { fill: #81c784; }
     svg .hol-lbl { fill: #81c784; font-size: 10px; }
     svg .ev { fill: #ce93d8; opacity: .15; }
@@ -183,6 +187,17 @@
     .section .big { font-size: 1rem; color: #fff; }
     .section .chart { margin-top: 8px; }
     #trend { height: 200px; cursor: pointer; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .cards div { border: 1px solid #222; border-radius: 8px; padding: 10px; }
+    .cards span { display: block; color: #888; font-size: .85rem; }
+    .cards strong { display: block; font-size: 1.5rem; }
+    .cards small { display: block; color: #888; min-height: 1.2em; }
+    #outages tr { cursor: pointer; }
+    #outages tr:hover td { background: #0f0f0f; }
+    .tag { font-size: .75rem; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+    .tag.crash { background: rgba(239, 83, 80, .2); color: #ef5350; }
+    .tag.reboot { background: #1c1c1c; color: #888; }
+    .tag.now { background: rgba(239, 83, 80, .9); color: #000; }
     .tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
     .tbl th { color: #888; font-weight: normal; font-size: .8rem; text-align: right; padding: 6px 8px; border-bottom: 1px solid #333; }
     .tbl td { text-align: right; padding: 8px; border-bottom: 1px solid #1c1c1c; }
@@ -260,7 +275,7 @@
       <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
-    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span><span id="leg-hol" hidden><i class="hol"></i>Vacances / férié</span><span id="leg-ev" hidden><i class="ev"></i>Événement</span></div>
+    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span><span id="leg-hol" hidden><i class="hol"></i>Vacances / férié</span><span id="leg-ev" hidden><i class="ev"></i>Événement</span><span id="leg-out" hidden><i class="out"></i>Serveur hors ligne</span></div>
     <p id="compare"></p>
     <p id="forecast"></p>
     <div class="zoom">
@@ -287,6 +302,20 @@
         <div id="trend-tip" class="tip" hidden></div>
       </div>
       <div class="legend"><span><i class="tbar"></i>Pic du jour</span><span><i></i>Moyenne sur 7 jours</span></div>
+    </div>
+
+    <div class="section">
+      <h2>Crashs et disponibilité</h2>
+      <p>Une coupure = le serveur ne répond plus à un relevé (précision : 5 minutes). Les coupures vers 6 h sont le redémarrage quotidien et ne comptent pas comme des crashs.</p>
+      <div class="cards">
+        <div><span>Disponibilité 7 jours</span><strong id="up7">–</strong><small id="up30"></small></div>
+        <div><span>Crashs sur 7 jours</span><strong id="crash7">–</strong><small id="crash30"></small></div>
+        <div><span>Durée moyenne</span><strong id="crash-len">–</strong><small id="crash-max"></small></div>
+        <div><span>Entre deux crashs</span><strong id="crash-gap">–</strong><small>en moyenne</small></div>
+        <div><span>Dernier crash</span><strong id="crash-last">–</strong><small id="crash-last-at"></small></div>
+      </div>
+      <div class="scroll"><table class="tbl" id="outages"></table></div>
+      <p id="outages-empty" style="color:#888;font-size:.9rem" hidden>Aucune coupure enregistrée pour l'instant.</p>
     </div>
 
     <div class="heat">
@@ -403,6 +432,7 @@
       heatmap();
       maps();
       trend();
+      crashes();
       holidayStats();
       eventsList();
       if (history.length) {
@@ -626,6 +656,19 @@
         svg += `<rect class="hol" x="${x1.toFixed(1)}" y="${T}" width="${(x2 - x1).toFixed(1)}" height="${H - T - B}" opacity="${a}"/>`;
         if (x2 - x1 > 90) texts.push({ x: x1 + 4, y: H - B - 5, cls: 'hol-lbl', text: b.ferie ? `Férié : ${b.ferie}` : `Vacances ${b.zones.join(', ')}` });
       }
+      // Coupures : zone hachurée entre le dernier relevé en ligne et le retour du serveur
+      svg += `<defs>` +
+        `<pattern id="hatch-crash" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" fill="rgba(239,83,80,.08)"/><line x1="0" y1="0" x2="0" y2="7" stroke="#ef5350" stroke-width="2" opacity=".7"/></pattern>` +
+        `<pattern id="hatch-reboot" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#777" stroke-width="2" opacity=".5"/></pattern></defs>`;
+      const outs = outages().filter((o) => (o.before ? o.before.t : o.start) < vis.end && (o.end || Date.now()) > vis.start);
+      $('leg-out').hidden = !outs.length;
+      for (const o of outs) {
+        const x1 = x(Math.max(o.before ? o.before.t : o.start, vis.start));
+        const x2 = x(Math.min(o.end || Date.now(), vis.end));
+        svg += `<rect class="out${o.reboot ? ' reboot' : ''}" x="${x1.toFixed(1)}" y="${T}" width="${Math.max(2, x2 - x1).toFixed(1)}" height="${H - T - B}"/>`;
+        if (!o.reboot && x2 - x1 > 40) texts.push({ x: (x1 + x2) / 2, y: T + 38, cls: 'out-lbl', text: o.end ? 'crash' : 'hors ligne', anchor: 'middle' });
+      }
+
       // Événements : zone violette (avec fin) ou trait (sans fin)
       const evs = events.filter((e) => e.start < vis.end && (e.end || e.start) >= vis.start);
       $('leg-ev').hidden = !evs.length;
@@ -981,6 +1024,90 @@
       draw();
       document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
     }
+
+    // ---------- Crashs et disponibilité ----------
+    // Coupures : relevés hors ligne consécutifs. Début ≈ premier relevé sans réponse,
+    // fin = premier relevé où le serveur répond à nouveau (null si toujours hors ligne).
+    function outages() {
+      const out = [];
+      let cur = null, lastOnline = null;
+      for (const x of history) {
+        if (x.players === null) {
+          if (!cur) cur = { start: x.t, end: null, before: lastOnline };
+        } else {
+          if (cur) { cur.end = x.t; out.push(cur); cur = null; }
+          lastOnline = x;
+        }
+      }
+      if (cur) out.push(cur);
+      for (const o of out) {
+        // Redémarrage quotidien : coupure qui commence entre 5 h 45 et 6 h 30
+        const d = new Date(o.start), m = d.getHours() * 60 + d.getMinutes();
+        o.reboot = m >= DAY_START * 60 - 15 && m <= DAY_START * 60 + 30;
+      }
+      return out;
+    }
+
+    function crashes() {
+      const now = Date.now();
+      const all = outages();
+      const list = all.filter((o) => !o.reboot);
+      const pct = (from) => {
+        const pts = history.filter((x) => x.t >= from);
+        return pts.length ? pts.filter((x) => x.players !== null).length / pts.length * 100 : null;
+      };
+      const fmtPct = (v) => (v === null ? '–' : `${String(Math.round(v * 10) / 10).replace('.', ',')} %`);
+      const ago = (t) => {
+        const m = Math.round((now - t) / 60e3);
+        return m < 60 ? `il y a ${m} min` : m < 48 * 60 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} jours`;
+      };
+      const len = (o) => (o.end || now) - o.start;
+
+      $('up7').textContent = fmtPct(pct(now - 7 * DAY));
+      $('up30').textContent = `${fmtPct(pct(now - 30 * DAY))} sur 30 jours`;
+      const in7 = list.filter((o) => o.start >= now - 7 * DAY).length;
+      $('crash7').textContent = in7;
+      $('crash30').textContent = `${list.filter((o) => o.start >= now - 30 * DAY).length} sur 30 jours`;
+      const ended = list.filter((o) => o.end);
+      $('crash-len').textContent = ended.length ? fmtLen(ended.reduce((a, o) => a + len(o), 0) / ended.length) : '–';
+      const longest = list.reduce((a, o) => (!a || len(o) > len(a) ? o : a), null);
+      $('crash-max').textContent = longest ? `max ${fmtLen(len(longest))}` : '';
+      // Temps moyen entre deux crashs (début à début) ; avec un seul crash, on ne peut pas le calculer
+      $('crash-gap').textContent = list.length > 1 ? fmtLen((list[list.length - 1].start - list[0].start) / (list.length - 1)) : '–';
+      const last = list[list.length - 1];
+      $('crash-last').textContent = last ? (last.end ? ago(last.start) : 'en cours') : 'aucun';
+      $('crash-last-at').textContent = last ? new Date(last.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Les 20 dernières coupures (crashs et redémarrages)
+      const table = $('outages');
+      table.replaceChildren();
+      $('outages-empty').hidden = all.length > 0;
+      if (!all.length) return;
+      const head = table.insertRow();
+      for (const h of ['Début', 'Fin', 'Durée', 'Joueurs avant', 'Type']) head.append(Object.assign(document.createElement('th'), { textContent: h }));
+      for (const o of [...all].reverse().slice(0, 20)) {
+        const r = table.insertRow();
+        r.insertCell().textContent = new Date(o.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        r.insertCell().textContent = o.end ? fmtHM(o.end) : '—';
+        r.insertCell().textContent = o.end ? fmtLen(len(o)) : `${fmtLen(len(o))}…`;
+        r.insertCell().textContent = o.before ? o.before.players : '–';
+        const tag = Object.assign(document.createElement('span'), {
+          className: `tag ${!o.end ? 'now' : o.reboot ? 'reboot' : 'crash'}`,
+          textContent: !o.end ? 'En cours' : o.reboot ? 'Redémarrage 6 h' : 'Crash',
+        });
+        r.insertCell().append(tag);
+        // Clic : la journée de la coupure, zoomée 2 h avant → 2 h après
+        r.addEventListener('click', () => {
+          const k = gameDay(o.start);
+          const p = period('day', Math.round((k - period('day', 0).start) / DAY));
+          const from = Math.max(p.start, o.start - 2 * HOUR), to = Math.min(p.end, (o.end || now) + 2 * HOUR);
+          goTo('day', Math.round((k - period('day', 0).start) / DAY), to - from < p.end - p.start ? { start: from, end: to } : null);
+        });
+      }
+    }
+
+    const fmtLen = (ms) => { const m = Math.round(ms / 60e3); return m >= 1440 ? `${Math.floor(m / 1440)} j ${Math.round(m % 1440 / 60)} h` : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
+    const fmtHM = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
     // ---------- Tendance (pic de chaque jour + moyenne sur 7 jours) ----------
     let trendDrawn = null;

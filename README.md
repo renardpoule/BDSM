@@ -58,6 +58,10 @@ Autres statistiques :
 - « Mis à jour il y a X min » sous le compteur (en orange au-delà de 30 minutes) ;
 - **Tendance** : le pic de chaque journée depuis le début, sa moyenne sur 7 jours et l'évolution
   sur les 30 (ou 7) derniers jours ;
+- **Crashs et disponibilité** : disponibilité sur 7 et 30 jours, nombre de crashs, durée moyenne
+  et plus longue coupure, temps moyen entre deux crashs, et la liste des dernières coupures
+  (les coupures vers 6 h sont classées « Redémarrage quotidien » et ne comptent pas comme crashs) ;
+  sur les graphiques, chaque coupure apparaît en zone hachurée (rouge : crash, gris : redémarrage) ;
 - **Vacances et jours fériés** : bandes vertes sur les graphiques et pic moyen selon le calendrier
   scolaire (zones A, B, C, via data.education.gouv.fr) et les jours fériés (via calendrier.api.gouv.fr) ;
 - **Partager** : copie un lien qui rouvre exactement la même vue (`?vue=jour&date=2026-10-10&de=…&a=…`).
