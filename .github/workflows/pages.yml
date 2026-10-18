@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pages: write
   id-token: write
@@ -62,6 +63,15 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "Historique du nombre de joueurs"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+
+      # GitHub désactive les tâches planifiées après 60 jours sans activité sur le dépôt :
+      # les réactiver à chaque passage remet ce compteur à zéro.
+      - name: Garder la tâche planifiée active
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pages.yml/enable"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
