@@ -62,6 +62,8 @@ Autres statistiques :
   et plus longue coupure, temps moyen entre deux crashs, et la liste des dernières coupures
   (les coupures vers 6 h sont classées « Redémarrage quotidien » et ne comptent pas comme crashs) ;
   sur les graphiques, chaque coupure apparaît en zone hachurée (rouge : crash, gris : redémarrage) ;
+  rien n'est jamais effacé : l'historique complet des coupures reste consultable sur la page
+  (rangé par mois, avec les chiffres « depuis le début ») et dans la feuille « Coupures » de l'export Excel ;
 - **Vacances et jours fériés** : bandes vertes sur les graphiques et pic moyen selon le calendrier
   scolaire (zones A, B, C, via data.education.gouv.fr) et les jours fériés (via calendrier.api.gouv.fr) ;
 - **Partager** : copie un lien qui rouvre exactement la même vue (`?vue=jour&date=2026-10-10&de=…&a=…`).

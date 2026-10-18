@@ -193,6 +193,10 @@
     .cards strong { display: block; font-size: 1.5rem; }
     .cards small { display: block; color: #888; min-height: 1.2em; }
     #outages tr { cursor: pointer; }
+    #outages tr.month td { cursor: default; background: none; color: #ff9800; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; padding-top: 16px; border-bottom: 1px solid #333; }
+    .section h3.sub { font-size: .85rem; color: #888; font-weight: normal; margin: 8px 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .opt { display: block; font-size: .85rem; color: #888; margin-bottom: 6px; }
+    #outages-more { margin-top: 10px; }
     #outages tr:hover td { background: #0f0f0f; }
     .tag { font-size: .75rem; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
     .tag.crash { background: rgba(239, 83, 80, .2); color: #ef5350; }
@@ -313,9 +317,13 @@
         <div><span>Durée moyenne</span><strong id="crash-len">–</strong><small id="crash-max"></small></div>
         <div><span>Entre deux crashs</span><strong id="crash-gap">–</strong><small>en moyenne</small></div>
         <div><span>Dernier crash</span><strong id="crash-last">–</strong><small id="crash-last-at"></small></div>
+        <div><span>Depuis le début</span><strong id="crash-all">–</strong><small id="up-all"></small></div>
       </div>
+      <h3 class="sub">Historique des coupures</h3>
+      <label class="opt"><input type="checkbox" id="show-reboots"> Afficher aussi les redémarrages de 6 h</label>
       <div class="scroll"><table class="tbl" id="outages"></table></div>
       <p id="outages-empty" style="color:#888;font-size:.9rem" hidden>Aucune coupure enregistrée pour l'instant.</p>
+      <button id="outages-more" hidden></button>
     </div>
 
     <div class="heat">
@@ -1048,6 +1056,10 @@
       return out;
     }
 
+    let showReboots = false, showAllOutages = false;
+    $('show-reboots').addEventListener('change', (e) => { showReboots = e.target.checked; crashes(); });
+    $('outages-more').addEventListener('click', () => { showAllOutages = !showAllOutages; crashes(); });
+
     function crashes() {
       const now = Date.now();
       const all = outages();
@@ -1077,15 +1089,35 @@
       const last = list[list.length - 1];
       $('crash-last').textContent = last ? (last.end ? ago(last.start) : 'en cours') : 'aucun';
       $('crash-last-at').textContent = last ? new Date(last.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      // Depuis le début de l'historique : rien n'est jamais effacé
+      $('crash-all').textContent = `${list.length} crash${list.length > 1 ? 's' : ''}`;
+      $('up-all').textContent = history.length
+        ? `${fmtPct(pct(0))} en ligne depuis le ${new Date(history[0].t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : '';
 
-      // Les 20 dernières coupures (crashs et redémarrages)
+      // Historique des coupures, rangé par mois (les plus récentes en premier)
+      const shown = (showReboots ? all : list).slice().reverse();
       const table = $('outages');
       table.replaceChildren();
-      $('outages-empty').hidden = all.length > 0;
-      if (!all.length) return;
+      $('outages-empty').hidden = shown.length > 0;
+      $('outages-empty').textContent = all.length ? 'Aucun crash enregistré (seulement des redémarrages de 6 h).' : 'Aucune coupure enregistrée pour l\'instant.';
+      $('outages-more').hidden = shown.length <= 20;
+      $('outages-more').textContent = showAllOutages ? 'Afficher moins' : `Afficher tout l'historique (${shown.length} coupures)`;
+      if (!shown.length) return;
       const head = table.insertRow();
       for (const h of ['Début', 'Fin', 'Durée', 'Joueurs avant', 'Type']) head.append(Object.assign(document.createElement('th'), { textContent: h }));
-      for (const o of [...all].reverse().slice(0, 20)) {
+      let month = null;
+      for (const o of showAllOutages ? shown : shown.slice(0, 20)) {
+        const m = new Date(o.start).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+        if (m !== month) {
+          month = m;
+          const count = shown.filter((x) => new Date(x.start).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) === m).length;
+          const mr = table.insertRow();
+          mr.className = 'month';
+          const c = mr.insertCell();
+          c.colSpan = 5;
+          c.textContent = `${m} · ${count} coupure${count > 1 ? 's' : ''}`;
+        }
         const r = table.insertRow();
         r.insertCell().textContent = new Date(o.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         r.insertCell().textContent = o.end ? fmtHM(o.end) : '—';
@@ -1485,6 +1517,15 @@
         for (const col of [4, 5, 6]) formatCells(ws3, col, 'dd/mm/yyyy hh:mm', mapRows.length);
         ws3['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 9 }, { wch: 6 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
         XLSX.utils.book_append_sheet(wb, ws3, 'Maps');
+
+        // Toutes les coupures depuis le début
+        const outRows = outages().map((o) => [excelDate(o.start), o.end ? excelDate(o.end) : null,
+          Math.round(((o.end || Date.now()) - o.start) / 60e3), o.before ? o.before.players : null,
+          !o.end ? 'En cours' : o.reboot ? 'Redémarrage 6 h' : 'Crash']);
+        const ws4 = XLSX.utils.aoa_to_sheet([['Début', 'Fin', 'Durée (minutes)', 'Joueurs avant', 'Type'], ...outRows]);
+        for (const col of [0, 1]) formatCells(ws4, col, 'dd/mm/yyyy hh:mm', outRows.length);
+        ws4['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 15 }, { wch: 13 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, ws4, 'Coupures');
         const today = new Date().toLocaleDateString('fr-CA'); // AAAA-MM-JJ
         XLSX.writeFile(wb, `bdsm-joueurs-${today}.xlsx`);
       } catch (err) {
