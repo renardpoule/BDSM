@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nombre de joueurs</title>
+  <title>Bureau Des Statistiques Multijoueurs (BDSM)</title>
   <style>
     body {
       margin: 0;
@@ -22,22 +22,37 @@
       opacity: .12;
       pointer-events: none;
     }
-    .top { padding: 24px 16px 8px; }
+    h1 { font-size: 1.6rem; margin: 0; padding: 20px 16px 0; letter-spacing: .02em; }
+    h1 small { color: #888; font-weight: normal; }
+    .top { padding: 12px 16px 8px; }
     p { font-size: 1.3rem; margin: 0; }
     #players { font-size: 6rem; font-weight: bold; line-height: 1.1; }
 
-    main {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 300px;
-      gap: 24px;
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 0 16px 48px;
-    }
-    @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+    main { max-width: 860px; margin: 0 auto; padding: 0 16px 48px; }
 
     aside { text-align: left; }
     aside h2 { font-size: 1.1rem; margin: 6px 0 12px; text-align: center; }
+
+    /* Grand écran : records dans un panneau fixé à droite, le reste centré à côté */
+    @media (min-width: 1000px) {
+      body { padding-right: 320px; }
+      body::before { right: 320px; }
+      aside {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 320px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        padding: 24px 18px;
+        background: #0c0c0c;
+        border-left: 1px solid #262626;
+      }
+    }
+    @media (max-width: 999px) {
+      aside { margin-top: 32px; padding-top: 24px; border-top: 1px solid #262626; }
+    }
     aside h3 { font-size: .85rem; color: #888; font-weight: normal; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .05em; }
     .rec {
       display: flex;
@@ -106,6 +121,7 @@
   </style>
 </head>
 <body>
+  <h1>Bureau Des Statistiques Multijoueurs <small>(BDSM)</small></h1>
   <div class="top">
     <p>Nombre de joueurs :</p>
     <div id="players">…</div>

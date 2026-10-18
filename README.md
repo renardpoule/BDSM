@@ -1,4 +1,4 @@
-# Nombre de joueurs GMod
+# Bureau Des Statistiques Multijoueurs (BDSM)
 
 Page noire qui affiche en temps réel le nombre de joueurs d'un serveur Garry's Mod.
 
