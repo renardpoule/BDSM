@@ -54,6 +54,30 @@ compteur, les changements de map sont marqués en bleu sur le graphique, et la s
 donne pour chaque map le temps passé, la moyenne et le pic de joueurs, ainsi que la liste des
 derniers changements. L'export Excel contient aussi la map de chaque relevé et une feuille « Maps ».
 
+Autres statistiques :
+- « Mis à jour il y a X min » sous le compteur (en orange au-delà de 30 minutes) ;
+- **Tendance** : le pic de chaque journée depuis le début, sa moyenne sur 7 jours et l'évolution
+  sur les 30 (ou 7) derniers jours ;
+- **Rush** : la plus longue période continue avec au moins N joueurs (N réglable sur la page) ;
+- **Vacances et jours fériés** : bandes vertes sur les graphiques et pic moyen selon le calendrier
+  scolaire (zones A, B, C, via data.education.gouv.fr) et les jours fériés (via calendrier.api.gouv.fr) ;
+- **Partager** : copie un lien qui rouvre exactement la même vue (`?vue=jour&date=2026-10-10&de=…&a=…`).
+
+### Noter un événement
+
+Modifier `public/events.json` directement sur GitHub (icône crayon), par exemple :
+
+```json
+[
+  { "debut": "2026-10-31 20:00", "fin": "2026-11-01 02:00", "titre": "Event Halloween" },
+  { "debut": "2026-11-15 21:00", "titre": "Grosse mise à jour" }
+]
+```
+
+Heures de Paris ; `fin` est facultatif. Après l'enregistrement, la page se met à jour toute seule :
+l'événement apparaît en violet sur les graphiques, et la section « Événements » compare le pic de
+cette journée à celui des 4 mêmes jours précédents.
+
 Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le compteur et la courbe du jour.
 
 En bas de page, la section « Données » génère un fichier Excel avec tous les relevés (date, heure,

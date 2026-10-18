@@ -15,8 +15,8 @@ const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 5) * 1000;
 const HISTORY_FILE = path.join(__dirname, 'public', 'history.csv');
 const HISTORY_INTERVAL = 5 * 60 * 1000; // un point toutes les 5 minutes, comme sur GitHub Pages
 
-const page = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
-const logo = fs.readFileSync(path.join(__dirname, 'public', 'logo.png'));
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const MIME = { '.html': 'text/html; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.csv': 'text/csv; charset=utf-8' };
 let status = { online: false, players: 0 };
 let lastHistory = 0;
 
@@ -48,18 +48,20 @@ http.createServer((req, res) => {
     res.end(fs.existsSync(HISTORY_FILE) ? fs.readFileSync(HISTORY_FILE) : 't,players\n');
     return;
   }
-  if (req.url.startsWith('/logo.png')) {
-    res.writeHead(200, { 'Content-Type': 'image/png' });
-    res.end(logo);
-    return;
-  }
   if (req.url.startsWith('/status.json')) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(status));
     return;
   }
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  res.end(page);
+  // Fichiers de la page (index.html, logo.png, events.json…)
+  const name = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  const file = path.normalize(path.join(PUBLIC_DIR, name === '/' ? 'index.html' : name));
+  if (!file.startsWith(PUBLIC_DIR + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Introuvable');
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+  res.end(fs.readFileSync(file));
 }).listen(PORT, () => {
   console.log(`Site disponible sur http://localhost:${PORT}`);
   console.log(`Serveur Garry's Mod surveillé : ${GMOD_HOST}:${GMOD_PORT}`);

@@ -30,6 +30,8 @@
     #players { font-size: 6rem; font-weight: bold; line-height: 1.1; }
     #fill { color: #888; font-size: .95rem; }
     #map-cur { color: #888; font-size: .9rem; margin-top: 6px; }
+    #updated { color: #666; font-size: .8rem; margin-top: 4px; }
+    #updated.stale { color: #ffb74d; }
     #map-cur b { color: #4fc3f7; font-weight: 600; }
     .bar { width: 220px; max-width: 70vw; height: 6px; margin: 6px auto 0; background: #222; border-radius: 3px; overflow: hidden; }
     .bar div { height: 100%; width: 0; background: #ff9800; transition: width .5s; }
@@ -116,7 +118,7 @@
     svg .area { fill: #fff; opacity: .08; }
     svg .cross { stroke: #555; }
     svg .dot { fill: #fff; stroke: #000; stroke-width: 2; }
-    #tip {
+    #tip, .tip {
       position: absolute;
       top: 0;
       pointer-events: none;
@@ -128,7 +130,7 @@
       white-space: nowrap;
       transform: translateX(-50%);
     }
-    #tip b { font-size: 1rem; }
+    #tip b, .tip b { font-size: 1rem; }
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-top: 16px; }
     .stats div { border: 1px solid #222; border-radius: 8px; padding: 10px; }
     .stats span { display: block; color: #888; font-size: .85rem; }
@@ -138,6 +140,15 @@
     svg .prev { fill: none; stroke: #888; stroke-width: 1.5; stroke-dasharray: 5 4; }
     svg .mapchg { stroke: #4fc3f7; stroke-width: 1.5; stroke-dasharray: 3 3; }
     svg .maplbl { fill: #4fc3f7; font-size: 11px; }
+    svg .hol { fill: #81c784; }
+    svg .hol-lbl { fill: #81c784; font-size: 10px; }
+    svg .ev { fill: #ce93d8; opacity: .15; }
+    svg .ev-line { stroke: #ce93d8; stroke-width: 1.5; }
+    svg .ev-lbl { fill: #ce93d8; font-size: 11px; }
+    svg .thr { stroke: #fff; stroke-width: 1; stroke-dasharray: 1 4; opacity: .5; }
+    svg .thr-lbl { fill: #777; font-size: 10px; }
+    svg .tbar { fill: #fff; opacity: .28; }
+    svg .ma { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
     svg .fc { fill: none; stroke: #ff9800; stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
     .legend i.fc { border-top: 2px dotted #ff9800; }
     #forecast { font-size: .95rem; margin-top: 4px; color: #ffb74d; min-height: 1.3em; }
@@ -162,6 +173,31 @@
     .heat-legend { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: .8rem; color: #888; margin-top: 10px; }
     .heat-legend span.grad { width: 160px; height: 10px; border-radius: 5px; background: linear-gradient(to right, rgba(255,152,0,.08), rgba(255,152,0,1)); }
     #heat-best { font-size: .95rem; margin-top: 10px; }
+
+    .thr-set { font-size: .85rem; color: #888; margin-top: 8px; }
+    .thr-set input { width: 52px; background: #111; color: #fff; border: 1px solid #333; border-radius: 4px; padding: 2px 4px; font: inherit; text-align: center; }
+    #share-btn { color: #fff; }
+    .legend i.tbar { border: none; height: 10px; width: 10px; background: rgba(255,255,255,.28); }
+    .legend i.hol { border: none; height: 10px; width: 14px; background: rgba(129,199,132,.3); }
+    .legend i.ev { border: none; height: 10px; width: 3px; background: #ce93d8; }
+
+    .section { margin-top: 40px; padding-top: 24px; border-top: 1px solid #262626; }
+    .section h2 { font-size: 1.1rem; margin: 0 0 4px; }
+    .section > p { font-size: .9rem; color: #888; margin: 0 0 12px; }
+    .section .big { font-size: 1rem; color: #fff; }
+    .section .chart { margin-top: 8px; }
+    #trend { height: 200px; cursor: pointer; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .tbl th { color: #888; font-weight: normal; font-size: .8rem; text-align: right; padding: 6px 8px; border-bottom: 1px solid #333; }
+    .tbl td { text-align: right; padding: 8px; border-bottom: 1px solid #1c1c1c; }
+    .tbl th:first-child, .tbl td:first-child { text-align: left; }
+    .tbl small { color: #888; }
+    #events-list div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1c1c1c; font-size: .9rem; text-align: left; cursor: pointer; }
+    #events-list div:hover { background: #0f0f0f; }
+    #events-list b { color: #ce93d8; font-weight: 600; }
+    #events-list .up { color: #66bb6a; }
+    #events-list .down { color: #ef5350; }
+    #events-list span:last-child { white-space: nowrap; color: #888; }
 
     .maps { margin-top: 40px; padding-top: 24px; border-top: 1px solid #262626; }
     .maps h2 { font-size: 1.1rem; margin: 0 0 4px; }
@@ -188,7 +224,7 @@
     body.tv main { max-width: 94vw; }
     body.tv svg { height: 42vh; }
     body.tv svg .axis { font-size: 14px; }
-    body.tv aside, body.tv .tabs, body.tv .nav, body.tv .zoom, body.tv .stats, body.tv .heat, body.tv .maps,
+    body.tv aside, body.tv .tabs, body.tv .nav, body.tv .zoom, body.tv .stats, body.tv .heat, body.tv .maps, body.tv .section, body.tv .thr-set,
     body.tv .data, body.tv #list, body.tv #tv-btn, body.tv #nodata { display: none !important; }
     body.tv #tv-exit { display: block; position: fixed; top: 12px; right: 12px; opacity: .25; cursor: pointer; }
     body.tv #tv-exit:hover { opacity: 1; }
@@ -209,6 +245,7 @@
     <div id="fill"></div>
     <div class="bar"><div id="fill-bar"></div></div>
     <div id="map-cur"></div>
+    <div id="updated"></div>
   </div>
 
   <main>
@@ -227,13 +264,14 @@
       <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
-    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span></div>
+    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span><span id="leg-hol" hidden><i class="hol"></i>Vacances / férié</span><span id="leg-ev" hidden><i class="ev"></i>Événement</span></div>
     <p id="compare"></p>
     <p id="forecast"></p>
     <div class="zoom">
       <button id="zoom-out" aria-label="Dézoomer">−</button>
       <button id="zoom-in" aria-label="Zoomer">+</button>
       <button id="zoom-reset" hidden>Tout voir</button>
+      <button id="share-btn" title="Copier un lien vers ce que tu regardes">Partager</button>
       <span id="zoom-hint">molette ou pincer pour zoomer, glisser pour se déplacer</span>
     </div>
     <p id="nodata" hidden>Pas encore de données pour cette période.</p>
@@ -243,6 +281,18 @@
       <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
       <div><span>En ligne</span><strong id="uptime">–</strong><small id="cuts"></small></div>
       <div><span>Remplissage</span><strong id="fillrate">–</strong><small id="fillrate-of"></small></div>
+      <div><span id="rush-title">Rush</span><strong id="rush">–</strong><small id="rush-at"></small></div>
+    </div>
+    <p class="thr-set">Rush = au moins <input id="thr" type="number" min="1" max="200" value="20"> joueurs connectés en même temps</p>
+
+    <div class="section trend">
+      <h2>Tendance</h2>
+      <p id="trend-text">Le pic de chaque journée depuis le début, et sa moyenne sur 7 jours.</p>
+      <div class="chart">
+        <svg id="trend" role="img" aria-label="Pic de joueurs par jour et moyenne sur 7 jours"></svg>
+        <div id="trend-tip" class="tip" hidden></div>
+      </div>
+      <div class="legend"><span><i class="tbar"></i>Pic du jour</span><span><i></i>Moyenne sur 7 jours</span></div>
     </div>
 
     <div class="heat">
@@ -251,6 +301,19 @@
       <div id="heatmap"></div>
       <div class="heat-legend"><span>0</span><span class="grad"></span><span id="heat-max"></span></div>
       <p id="heat-best"></p>
+    </div>
+
+    <div class="section">
+      <h2>Vacances et jours fériés</h2>
+      <p>Pic moyen par journée selon le calendrier scolaire (zones A, B, C) et les jours fériés.</p>
+      <table class="tbl" id="hol-table"></table>
+      <p id="hol-text" class="big" style="margin-top: 10px"></p>
+    </div>
+
+    <div class="section">
+      <h2>Événements</h2>
+      <p>Événements notés sur le serveur, et le pic de la soirée comparé aux 4 mêmes jours précédents.</p>
+      <div id="events-list"></div>
     </div>
 
     <div class="maps">
@@ -286,6 +349,18 @@
     let view = 'day';
     let offset = 0; // 0 = période en cours, -1 = précédente, etc.
     let maxPlayers = null; // nombre de places du serveur (dernier relevé)
+    let lastUpdate = null; // heure du dernier relevé
+    let events = [];       // événements notés à la main dans events.json
+    let holidays = [];     // vacances scolaires { start, end, zone, desc }
+    let feries = {};       // jours fériés { 'AAAA-MM-JJ': nom }
+
+    function renderUpdated() {
+      if (!lastUpdate) return;
+      const min = Math.round((Date.now() - lastUpdate) / 60e3);
+      const ago = min < 1 ? "à l'instant" : min < 60 ? `il y a ${min} min` : `il y a ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
+      $('updated').textContent = min > 30 ? `⚠ Dernière mise à jour ${ago}` : `Mis à jour ${ago}`;
+      $('updated').classList.toggle('stale', min > 30);
+    }
 
     // ---------- Compteur + liste ----------
     function duree(sec) {
@@ -298,6 +373,7 @@
       try {
         const s = await (await fetch('status.json?t=' + Date.now())).json();
         $('players').textContent = s.online ? s.players : 'Hors ligne';
+        if (s.updatedAt) { lastUpdate = s.updatedAt; renderUpdated(); }
         const firstMax = !maxPlayers && s.maxPlayers;
         if (s.maxPlayers) maxPlayers = s.maxPlayers;
         if (firstMax && history.length) { draw(); records(); } // le remplissage a besoin du nombre de places
@@ -332,6 +408,9 @@
       records();
       heatmap();
       maps();
+      trend();
+      holidayStats();
+      eventsList();
       if (history.length) {
         const since = new Date(history[0].t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         $('data-info').textContent = `${history.length.toLocaleString('fr-FR')} relevés depuis le ${since}.`;
@@ -542,6 +621,32 @@
       };
       const cur = paths(data), prv = paths(prevData);
       const fcLine = fcData.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('');
+      // Textes ajoutés après coup avec textContent (noms venant des données)
+      const texts = [];
+      // Vacances scolaires et jours fériés en fond
+      const bands = holidayBands(vis.start, vis.end);
+      $('leg-hol').hidden = !bands.length;
+      for (const b of bands) {
+        const x1 = x(Math.max(b.start, vis.start)), x2 = x(Math.min(b.end, vis.end));
+        const a = b.zones.length === 3 || b.ferie ? 0.14 : 0.07;
+        svg += `<rect class="hol" x="${x1.toFixed(1)}" y="${T}" width="${(x2 - x1).toFixed(1)}" height="${H - T - B}" opacity="${a}"/>`;
+        if (x2 - x1 > 90) texts.push({ x: x1 + 4, y: H - B - 5, cls: 'hol-lbl', text: b.ferie ? `Férié : ${b.ferie}` : `Vacances ${b.zones.join(', ')}` });
+      }
+      // Événements : zone violette (avec fin) ou trait (sans fin)
+      const evs = events.filter((e) => e.start < vis.end && (e.end || e.start) >= vis.start);
+      $('leg-ev').hidden = !evs.length;
+      for (const e of evs) {
+        const x1 = x(Math.max(e.start, vis.start));
+        if (e.end) svg += `<rect class="ev" x="${x1.toFixed(1)}" y="${T}" width="${(x(Math.min(e.end, vis.end)) - x1).toFixed(1)}" height="${H - T - B}"/>`;
+        if (e.start >= vis.start) svg += `<line class="ev-line" x1="${x1.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${T}" y2="${H - B}"/>`;
+        texts.push({ x: x1 + 4, y: T + 24, cls: 'ev-lbl', text: `★ ${e.title}` });
+      }
+      // Seuil du rush (vue sur une journée)
+      if (span <= 1.5 * DAY && rushThr < maxY) {
+        svg += `<line class="thr" x1="${L}" x2="${W - R}" y1="${y(rushThr).toFixed(1)}" y2="${y(rushThr).toFixed(1)}"/>`;
+        texts.push({ x: W - R - 2, y: y(rushThr) - 4, cls: 'thr-lbl', text: `rush ≥ ${rushThr}`, anchor: 'end' });
+      }
+
       // Repères verticaux aux changements de map (nom affiché seulement s'il y a la place)
       const labeled = [];
       let lastLabel = -Infinity;
@@ -550,7 +655,7 @@
         const cx = x(c.t);
         svg += `<line class="mapchg" x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${T}" y2="${H - B}"/>`;
         if (cx - lastLabel > 140 && cx < W - R - 60) {
-          svg += `<text class="maplbl" x="${(cx + 4).toFixed(1)}" y="${T + 10}"></text>`;
+          texts.push({ x: cx + 4, y: T + 10, cls: 'maplbl', text: `→ ${c.to}` });
           labeled.push(c);
           lastLabel = cx;
         }
@@ -560,8 +665,15 @@
              `<path class="area" d="${cur.area}"/><path class="line" d="${cur.line}"/></g>` +
              `<g id="hover" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle class="dot" r="4"/></g>`;
       $('chart').innerHTML = svg;
-      const labels = $('chart').querySelectorAll('.maplbl');
-      labeled.forEach((c, i) => { labels[i].textContent = `→ ${c.to}`; });
+      for (const tx of texts) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        el.setAttribute('x', tx.x.toFixed(1));
+        el.setAttribute('y', tx.y.toFixed(1));
+        el.setAttribute('class', tx.cls);
+        if (tx.anchor) el.setAttribute('text-anchor', tx.anchor);
+        el.textContent = tx.text;
+        $('chart').insertBefore(el, $('hover'));
+      }
       drawn = { data: data.filter((d) => d.v !== null && d.t >= vis.start && d.t < vis.end), x, y, bucket,
         prev: prevData.filter((d) => d.v !== null), prevLabel: q.label };
 
@@ -619,6 +731,8 @@
         $('uptime').textContent = '–';
         $('cuts').textContent = '';
       }
+      renderRush();
+
       // Remplissage : le pic par rapport au nombre de places
       if (online.length && maxPlayers) {
         const peak = Math.max(...online.map((x) => x.players));
@@ -648,14 +762,7 @@
 
     function records() {
       const now = Date.now();
-      const days = [];
-      for (const p of periodsOf('day')) {
-        if (p.end > now) continue;
-        const pts = history.filter((x) => x.t >= p.start && x.t < p.end && x.players !== null);
-        const hours = new Set(pts.map((x) => Math.floor(x.t / HOUR))).size;
-        if (hours < 12) continue;
-        days.push({ ...p, score: Math.max(...pts.map((x) => x.players)) });
-      }
+      const days = dayPeaks();
 
       const groups = [['day', 'Jours', 'Meilleur jour', 'Pire jour', 'pic', days]];
       for (const [v, title, best, worst] of [
@@ -732,6 +839,331 @@
         draw();
       });
       return b;
+    }
+
+    // ---------- Journées ----------
+    // Pic de chaque journée terminée (6 h → 6 h) ayant des relevés sur au moins 12 heures
+    let dayCache = null;
+    function dayPeaks() {
+      if (dayCache && dayCache.n === history.length && dayCache.last === history[history.length - 1]?.t) return dayCache.days;
+      const now = Date.now();
+      const p0 = period('day', 0).start;
+      const by = new Map();
+      for (const x of history) {
+        if (x.players === null) continue;
+        const k = gameDay(x.t);
+        const d = by.get(k) || { max: 0, hours: new Set() };
+        d.max = Math.max(d.max, x.players);
+        d.hours.add(Math.floor(x.t / HOUR));
+        by.set(k, d);
+      }
+      const days = [];
+      for (const [k, d] of by) {
+        const end = new Date(k); end.setDate(end.getDate() + 1);
+        if (+end > now || d.hours.size < 12) continue;
+        days.push({ start: k, end: +end, off: Math.round((k - p0) / DAY), score: d.max });
+      }
+      days.sort((a, b) => a.start - b.start);
+      dayCache = { n: history.length, last: history[history.length - 1]?.t, days };
+      return days;
+    }
+
+    // ---------- Vacances scolaires et jours fériés ----------
+    const dateKey = (t) => new Date(t).toLocaleDateString('fr-CA'); // AAAA-MM-JJ, heure locale
+
+    // Infos d'une journée de jeu (on regarde la date à midi)
+    function dayInfo(start) {
+      const noon = start + 6 * HOUR;
+      const zones = [...new Set(holidays.filter((h) => h.start <= noon && noon < h.end).map((h) => h.zone))].sort();
+      return { zones, ferie: feries[dateKey(noon)] || null, desc: holidays.find((h) => h.start <= noon && noon < h.end)?.desc };
+    }
+
+    // Bandes à afficher entre deux instants : journées consécutives avec les mêmes vacances / férié
+    function holidayBands(from, to) {
+      if (!holidays.length && !Object.keys(feries).length) return [];
+      const bands = [];
+      for (let d = new Date(gameDay(from)); +d < to; d.setDate(d.getDate() + 1)) {
+        const start = +d;
+        const end = new Date(d); end.setDate(end.getDate() + 1);
+        const info = dayInfo(start);
+        if (!info.zones.length && !info.ferie) continue;
+        const sig = info.zones.join() + '|' + (info.ferie || '');
+        const last = bands[bands.length - 1];
+        if (last && last.sig === sig && last.end === start) last.end = +end;
+        else bands.push({ start, end: +end, sig, ...info });
+      }
+      return bands;
+    }
+
+    async function loadHolidays() {
+      try {
+        const cached = JSON.parse(localStorage.getItem('bdsm-calendrier') || 'null');
+        if (cached && Date.now() - cached.t < 7 * DAY) {
+          ({ holidays, feries } = cached);
+        } else {
+          const q = 'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records' +
+            '?select=description,start_date,end_date,zones&where=' + encodeURIComponent('end_date>="2026-01-01" and zones in ("Zone A","Zone B","Zone C")') +
+            '&group_by=description,start_date,end_date,zones&limit=100';
+          const [vac, fer] = await Promise.all([
+            fetch(q).then((r) => r.json()),
+            fetch('https://calendrier.api.gouv.fr/jours-feries/metropole.json').then((r) => r.json()),
+          ]);
+          holidays = vac.results.map((h) => ({ start: Date.parse(h.start_date), end: Date.parse(h.end_date), zone: h.zones.replace('Zone ', ''), desc: h.description }));
+          feries = fer;
+          try { localStorage.setItem('bdsm-calendrier', JSON.stringify({ t: Date.now(), holidays, feries })); } catch { /* stockage indisponible */ }
+        }
+      } catch { /* calendrier indisponible : on fait sans */ }
+      draw(); trend(); holidayStats();
+    }
+
+    function holidayStats() {
+      const cats = [
+        ['Hors vacances, en semaine', []], ['Hors vacances, le week-end', []],
+        ['Vacances, certaines zones', []], ['Vacances, toutes zones', []], ['Jours fériés', []],
+      ];
+      if (!holidays.length) { $('hol-table').replaceChildren(); $('hol-text').textContent = 'Calendrier scolaire indisponible pour le moment.'; return; }
+      for (const d of dayPeaks()) {
+        const info = dayInfo(d.start);
+        const wd = new Date(d.start).getDay();
+        const i = info.ferie ? 4 : info.zones.length === 3 ? 3 : info.zones.length ? 2 : wd === 0 || wd === 6 ? 1 : 0;
+        cats[i][1].push(d.score);
+      }
+      const table = $('hol-table');
+      table.replaceChildren();
+      const head = table.insertRow();
+      for (const h of ['Journées', 'Nombre', 'Pic moyen']) head.append(Object.assign(document.createElement('th'), { textContent: h }));
+      const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+      for (const [label, list] of cats) {
+        const r = table.insertRow();
+        r.insertCell().textContent = label;
+        r.insertCell().textContent = list.length;
+        r.insertCell().textContent = list.length ? String(Math.round(avg(list) * 10) / 10).replace('.', ',') : '–';
+      }
+      const vac = [...cats[2][1], ...cats[3][1]], out = [...cats[0][1], ...cats[1][1]];
+      $('hol-text').textContent = vac.length && out.length
+        ? `En vacances, le pic moyen est de ${Math.round(avg(vac))} joueurs, contre ${Math.round(avg(out))} hors vacances (${Math.round((avg(vac) - avg(out)) / avg(out) * 100) >= 0 ? '+' : ''}${Math.round((avg(vac) - avg(out)) / avg(out) * 100)} %).`
+        : "Il faut des journées en vacances et hors vacances pour comparer : ça viendra avec le temps.";
+    }
+
+    // ---------- Événements (events.json, à modifier sur GitHub) ----------
+    async function loadEvents() {
+      try {
+        const list = await (await fetch('events.json?t=' + Date.now())).json();
+        const parse = (v) => (v ? Date.parse(String(v).trim().replace(' ', 'T')) : NaN);
+        events = list.map((e) => ({ start: parse(e.debut), end: parse(e.fin), title: String(e.titre || 'Événement') }))
+          .filter((e) => !isNaN(e.start)).map((e) => ({ ...e, end: isNaN(e.end) ? null : e.end }))
+          .sort((a, b) => a.start - b.start);
+      } catch { events = []; }
+      draw(); trend(); eventsList();
+    }
+
+    function eventsList() {
+      const box = $('events-list');
+      if (!events.length) {
+        box.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'Aucun événement noté pour l\'instant.', style: 'color:#888;font-size:.9rem;margin:0' }));
+        return;
+      }
+      const days = dayPeaks();
+      box.replaceChildren(...[...events].reverse().map((e) => {
+        const row = document.createElement('div');
+        const left = document.createElement('span');
+        left.append(Object.assign(document.createElement('b'), { textContent: e.title }), ' · ',
+          new Date(e.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+        const right = document.createElement('span');
+        // Effet : pic de la journée de l'événement comparé aux 4 mêmes jours précédents
+        const k = gameDay(e.start);
+        const day = days.find((d) => d.start === k);
+        const before = [1, 2, 3, 4].map((w) => { const d = new Date(k); d.setDate(d.getDate() - 7 * w); return days.find((x) => x.start === +d); }).filter(Boolean);
+        if (day && before.length) {
+          const ref = before.reduce((a, d) => a + d.score, 0) / before.length;
+          const pct = Math.round((day.score - ref) / ref * 100);
+          right.append(Object.assign(document.createElement('span'), { className: pct >= 0 ? 'up' : 'down', textContent: `${pct >= 0 ? '▲ +' : '▼ '}${pct} %` }),
+            ` (pic ${day.score} contre ${Math.round(ref)} d'habitude)`);
+        } else {
+          right.textContent = e.start > Date.now() ? 'à venir' : 'pas assez de données';
+        }
+        row.append(left, right);
+        row.addEventListener('click', () => goTo('day', Math.round((k - period('day', 0).start) / DAY)));
+        return row;
+      }));
+    }
+
+    function goTo(v, off, z = null) {
+      view = v; offset = off; zoom = z;
+      document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o.dataset.view === v));
+      draw();
+      document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ---------- Rush ----------
+    let rushThr = 20;
+    try { rushThr = Number(localStorage.getItem('bdsm-rush')) || 20; } catch { /* stockage indisponible */ }
+
+    // Plus longue période continue avec au moins rushThr joueurs entre deux instants
+    function longestRush(from, to) {
+      let best = null, cur = null, prev = null;
+      for (const x of history) {
+        if (x.t < from) continue;
+        if (x.t >= to) break;
+        const ok = x.players !== null && x.players >= rushThr;
+        if (ok && cur && prev && x.t - prev.t <= 30 * 60e3) cur.end = x.t;
+        else if (ok) cur = { start: x.t, end: x.t };
+        else cur = null;
+        if (cur && (!best || cur.end - cur.start > best.end - best.start)) best = { ...cur };
+        prev = x;
+      }
+      return best;
+    }
+
+    const fmtLen = (ms) => { const m = Math.round(ms / 60e3); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
+    const fmtHM = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    function renderRush() {
+      $('rush-title').textContent = `Rush (≥ ${rushThr})`;
+      const span = vis.end - vis.start;
+      if (span <= 1.5 * DAY) {
+        const r = longestRush(vis.start, vis.end);
+        $('rush').textContent = r ? fmtLen(r.end - r.start) : 'aucun';
+        $('rush-at').textContent = r ? `${fmtHM(r.start)} → ${fmtHM(r.end)}` : `jamais ${rushThr} joueurs`;
+        return;
+      }
+      // Plusieurs jours : durée moyenne du rush par journée, et le plus long
+      const lens = [];
+      let best = null;
+      for (let d = new Date(gameDay(vis.start)); +d < vis.end; d.setDate(d.getDate() + 1)) {
+        const end = new Date(d); end.setDate(end.getDate() + 1);
+        if (!history.some((x) => x.t >= +d && x.t < +end)) continue;
+        const r = longestRush(Math.max(+d, vis.start), Math.min(+end, vis.end));
+        const len = r ? r.end - r.start : 0;
+        lens.push(len);
+        if (r && (!best || len > best.len)) best = { len, t: +d };
+      }
+      if (!lens.length) { $('rush').textContent = '–'; $('rush-at').textContent = ''; return; }
+      $('rush').textContent = `${fmtLen(lens.reduce((a, b) => a + b, 0) / lens.length)}`;
+      $('rush-at').textContent = best
+        ? `par jour · max ${new Date(best.t).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} (${fmtLen(best.len)})`
+        : 'par jour';
+    }
+
+    $('thr').value = rushThr;
+    $('thr').addEventListener('change', () => {
+      rushThr = Math.max(1, Math.round(Number($('thr').value) || 20));
+      $('thr').value = rushThr;
+      try { localStorage.setItem('bdsm-rush', rushThr); } catch { /* stockage indisponible */ }
+      draw();
+    });
+
+    // ---------- Tendance (pic de chaque jour + moyenne sur 7 jours) ----------
+    let trendDrawn = null;
+    function trend() {
+      const svgEl = $('trend');
+      const days = dayPeaks();
+      const box = svgEl.getBoundingClientRect();
+      const TW = Math.max(280, Math.round(box.width)), TH = 200;
+      svgEl.setAttribute('viewBox', `0 0 ${TW} ${TH}`);
+      if (days.length < 2) {
+        svgEl.innerHTML = `<text class="axis" x="${TW / 2}" y="${TH / 2}" text-anchor="middle">Il faut au moins 2 journées complètes.</text>`;
+        $('trend-text').textContent = 'Le pic de chaque journée depuis le début, et sa moyenne sur 7 jours.';
+        trendDrawn = null;
+        return;
+      }
+      const ma = days.map((d) => {
+        const win = days.filter((o) => o.start > d.start - 7 * DAY && o.start <= d.start);
+        return { t: d.start + DAY / 2, v: win.reduce((a, o) => a + o.score, 0) / win.length };
+      });
+      const t0 = days[0].start, t1 = days[days.length - 1].end;
+      const maxY = niceMax(Math.max(4, ...days.map((d) => d.score)));
+      const tx = (t) => L + (t - t0) / (t1 - t0) * (TW - L - R);
+      const ty = (v) => T + (1 - v / maxY) * (TH - T - B);
+      let out = '';
+      for (const b of holidayBands(t0, t1)) {
+        const a = b.zones.length === 3 || b.ferie ? 0.16 : 0.08;
+        out += `<rect class="hol" x="${tx(b.start).toFixed(1)}" y="${T}" width="${(tx(b.end) - tx(b.start)).toFixed(1)}" height="${TH - T - B}" opacity="${a}"/>`;
+      }
+      for (let i = 0; i <= 4; i++) {
+        const v = maxY * i / 4;
+        out += `<line class="grid" x1="${L}" x2="${TW - R}" y1="${ty(v)}" y2="${ty(v)}"/><text class="axis" x="${L - 6}" y="${ty(v) + 4}" text-anchor="end">${v}</text>`;
+      }
+      const bw = Math.max(1, (TW - L - R) / ((t1 - t0) / DAY) - 2);
+      for (const d of days) out += `<rect class="tbar" x="${(tx(d.start + DAY / 2) - bw / 2).toFixed(1)}" y="${ty(d.score).toFixed(1)}" width="${bw.toFixed(1)}" height="${(ty(0) - ty(d.score)).toFixed(1)}" rx="1"/>`;
+      out += `<path class="ma" d="${ma.map((m, i) => `${i ? 'L' : 'M'}${tx(m.t).toFixed(1)},${ty(m.v).toFixed(1)}`).join('')}"/>`;
+      for (const e of events) if (e.start >= t0 && e.start < t1) out += `<line class="ev-line" x1="${tx(e.start).toFixed(1)}" x2="${tx(e.start).toFixed(1)}" y1="${T}" y2="${TH - B}"/>`;
+      const n = Math.min(6, days.length);
+      for (let i = 0; i < n; i++) {
+        const d = days[Math.round(i * (days.length - 1) / Math.max(1, n - 1))];
+        out += `<text class="axis" x="${tx(d.start + DAY / 2).toFixed(1)}" y="${TH - 6}" text-anchor="middle">${new Date(d.start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</text>`;
+      }
+      out += `<g id="trend-hover" visibility="hidden"><line class="cross" y1="${T}" y2="${TH - B}"/></g>`;
+      svgEl.innerHTML = out;
+      trendDrawn = { days, ma, tx, TW };
+
+      // Évolution : 30 derniers jours contre les 30 d'avant (ou 7 contre 7 au début)
+      const now = days[days.length - 1].end;
+      const avgIn = (a, b) => { const l = days.filter((d) => d.start >= a && d.start < b); return l.length ? { v: l.reduce((x, d) => x + d.score, 0) / l.length, n: l.length } : null; };
+      let txt = 'Le pic de chaque journée depuis le début, et sa moyenne sur 7 jours.';
+      for (const w of [30, 7]) {
+        const cur = avgIn(now - w * DAY, now), prev = avgIn(now - 2 * w * DAY, now - w * DAY);
+        if (cur && prev && cur.n >= w / 3 && prev.n >= w / 3) {
+          const pct = Math.round((cur.v - prev.v) / prev.v * 100);
+          txt = `${pct > 0 ? '▲ +' : pct < 0 ? '▼ ' : '= '}${pct} % sur les ${w} derniers jours : pic moyen de ${Math.round(cur.v)} joueurs, contre ${Math.round(prev.v)} les ${w} jours d'avant.`;
+          break;
+        }
+      }
+      $('trend-text').textContent = txt;
+    }
+
+    $('trend').addEventListener('pointermove', (e) => {
+      if (!trendDrawn) return;
+      const box = $('trend').getBoundingClientRect();
+      const mx = (e.clientX - box.left) / box.width * trendDrawn.TW;
+      const i = trendDrawn.days.reduce((bi, d, j) => (Math.abs(trendDrawn.tx(d.start + DAY / 2) - mx) < Math.abs(trendDrawn.tx(trendDrawn.days[bi].start + DAY / 2) - mx) ? j : bi), 0);
+      const d = trendDrawn.days[i];
+      const cx = trendDrawn.tx(d.start + DAY / 2);
+      const g = $('trend-hover');
+      g.setAttribute('visibility', 'visible');
+      g.querySelector('line').setAttribute('x1', cx);
+      g.querySelector('line').setAttribute('x2', cx);
+      const tip = $('trend-tip');
+      tip.innerHTML = `<b>${d.score}</b> joueurs au pic<br>${new Date(d.start).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · moy. 7 j : ${String(Math.round(trendDrawn.ma[i].v * 10) / 10).replace('.', ',')}`;
+      tip.style.left = `${Math.min(Math.max(cx / trendDrawn.TW * box.width, 80), box.width - 80)}px`;
+      tip.hidden = false;
+    });
+    $('trend').addEventListener('pointerleave', () => { $('trend-tip').hidden = true; const g = $('trend-hover'); if (g) g.setAttribute('visibility', 'hidden'); });
+    // Clic sur une barre : ouvre cette journée dans le graphique principal
+    $('trend').addEventListener('click', (e) => {
+      if (!trendDrawn) return;
+      const box = $('trend').getBoundingClientRect();
+      const mx = (e.clientX - box.left) / box.width * trendDrawn.TW;
+      const d = trendDrawn.days.reduce((a, b) => (Math.abs(trendDrawn.tx(b.start + DAY / 2) - mx) < Math.abs(trendDrawn.tx(a.start + DAY / 2) - mx) ? b : a));
+      goTo('day', d.off);
+    });
+
+    // ---------- Partager ----------
+    const VIEWS = { day: 'jour', week: 'semaine', month: 'mois' };
+    $('share-btn').addEventListener('click', async () => {
+      const p = period();
+      const params = new URLSearchParams({ vue: VIEWS[view], date: dateKey(p.start + 6 * HOUR) });
+      if (zoom) { params.set('de', Math.round(zoom.start)); params.set('a', Math.round(zoom.end)); }
+      const url = `${location.origin}${location.pathname}?${params}`;
+      try {
+        if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title: document.title, url });
+        else { await navigator.clipboard.writeText(url); $('share-btn').textContent = 'Lien copié !'; setTimeout(() => { $('share-btn').textContent = 'Partager'; }, 2000); }
+      } catch { prompt('Lien à copier :', url); }
+    });
+
+    // Ouvre la période demandée dans l'adresse (?vue=jour&date=2026-10-10&de=…&a=…)
+    function applyShareLink() {
+      const q = new URLSearchParams(location.search);
+      const v = Object.keys(VIEWS).find((k) => VIEWS[k] === q.get('vue'));
+      if (!v) return;
+      const t = Date.parse(`${q.get('date')}T12:00`);
+      let off = 0;
+      if (!isNaN(t)) for (let o = 0; o > -2000; o--) { const p = period(v, o); if (p.start <= t && t < p.end) { off = o; break; } if (p.end <= t) break; }
+      view = v; offset = off;
+      const p = period(v, off);
+      const de = Number(q.get('de')), a = Number(q.get('a'));
+      zoom = de && a && de >= p.start && a <= p.end && a - de >= MIN_SPAN ? { start: de, end: a } : null;
+      document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o.dataset.view === v));
     }
 
     // ---------- Maps ----------
@@ -965,17 +1397,20 @@
         }
         const dayRows = [...days].map(([k, pts]) => {
           const on = pts.filter((x) => x.players !== null);
-          if (!on.length) return [excelDate(k), weekday(k), null, null, null, null, pts.length];
+          const endK = new Date(k); endK.setDate(endK.getDate() + 1);
+          const r = longestRush(k, +endK);
+          const rush = r ? Math.round((r.end - r.start) / 60e3) : 0;
+          if (!on.length) return [excelDate(k), weekday(k), null, null, null, null, pts.length, null];
           const max = on.reduce((a, b) => (b.players > a.players ? b : a));
           const avg = on.reduce((a, b) => a + b.players, 0) / on.length;
           return [excelDate(k), weekday(k), max.players, excelDate(max.t), Math.round(avg * 10) / 10,
-            Math.min(...on.map((x) => x.players)), pts.length];
+            Math.min(...on.map((x) => x.players)), pts.length, rush];
         });
         const ws2 = XLSX.utils.aoa_to_sheet([
-          ['Journée (6 h → 6 h)', 'Jour', 'Pic', 'Heure du pic', 'Moyenne', 'Creux', 'Relevés'], ...dayRows]);
+          ['Journée (6 h → 6 h)', 'Jour', 'Pic', 'Heure du pic', 'Moyenne', 'Creux', 'Relevés', `Rush ≥ ${rushThr} (minutes)`], ...dayRows]);
         formatCells(ws2, 0, 'dd/mm/yyyy', dayRows.length);
         formatCells(ws2, 3, 'hh:mm', dayRows.length);
-        ws2['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 6 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 8 }];
+        ws2['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 6 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 8 }, { wch: 20 }];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws1, 'Relevés');
@@ -1102,7 +1537,7 @@
       zoom = null;
       draw();
     }));
-    window.addEventListener('resize', draw);
+    window.addEventListener('resize', () => { draw(); trend(); });
     $('prev').addEventListener('click', () => { offset--; zoom = null; draw(); });
     $('next').addEventListener('click', () => { offset++; zoom = null; draw(); });
 
@@ -1133,9 +1568,13 @@
     // En mode TV, la journée change à 6 h : on redessine chaque minute
     setInterval(() => { if (document.body.classList.contains('tv')) draw(); }, 60000);
 
+    applyShareLink();
     refresh();
     loadHistory();
+    loadEvents();
+    loadHolidays();
     setInterval(refresh, 30000);
+    setInterval(renderUpdated, 30000);
     setInterval(loadHistory, 5 * 60000);
   </script>
 </body>
