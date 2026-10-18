@@ -145,8 +145,6 @@
     svg .ev { fill: #ce93d8; opacity: .15; }
     svg .ev-line { stroke: #ce93d8; stroke-width: 1.5; }
     svg .ev-lbl { fill: #ce93d8; font-size: 11px; }
-    svg .thr { stroke: #fff; stroke-width: 1; stroke-dasharray: 1 4; opacity: .5; }
-    svg .thr-lbl { fill: #777; font-size: 10px; }
     svg .tbar { fill: #fff; opacity: .28; }
     svg .ma { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
     svg .fc { fill: none; stroke: #ff9800; stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
@@ -174,8 +172,6 @@
     .heat-legend span.grad { width: 160px; height: 10px; border-radius: 5px; background: linear-gradient(to right, rgba(255,152,0,.08), rgba(255,152,0,1)); }
     #heat-best { font-size: .95rem; margin-top: 10px; }
 
-    .thr-set { font-size: .85rem; color: #888; margin-top: 8px; }
-    .thr-set input { width: 52px; background: #111; color: #fff; border: 1px solid #333; border-radius: 4px; padding: 2px 4px; font: inherit; text-align: center; }
     #share-btn { color: #fff; }
     .legend i.tbar { border: none; height: 10px; width: 10px; background: rgba(255,255,255,.28); }
     .legend i.hol { border: none; height: 10px; width: 14px; background: rgba(129,199,132,.3); }
@@ -224,7 +220,7 @@
     body.tv main { max-width: 94vw; }
     body.tv svg { height: 42vh; }
     body.tv svg .axis { font-size: 14px; }
-    body.tv aside, body.tv .tabs, body.tv .nav, body.tv .zoom, body.tv .stats, body.tv .heat, body.tv .maps, body.tv .section, body.tv .thr-set,
+    body.tv aside, body.tv .tabs, body.tv .nav, body.tv .zoom, body.tv .stats, body.tv .heat, body.tv .maps, body.tv .section,
     body.tv .data, body.tv #list, body.tv #tv-btn, body.tv #nodata { display: none !important; }
     body.tv #tv-exit { display: block; position: fixed; top: 12px; right: 12px; opacity: .25; cursor: pointer; }
     body.tv #tv-exit:hover { opacity: 1; }
@@ -281,9 +277,7 @@
       <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
       <div><span>En ligne</span><strong id="uptime">–</strong><small id="cuts"></small></div>
       <div><span>Remplissage</span><strong id="fillrate">–</strong><small id="fillrate-of"></small></div>
-      <div><span id="rush-title">Rush</span><strong id="rush">–</strong><small id="rush-at"></small></div>
     </div>
-    <p class="thr-set">Rush = au moins <input id="thr" type="number" min="1" max="200" value="20"> joueurs connectés en même temps</p>
 
     <div class="section trend">
       <h2>Tendance</h2>
@@ -641,11 +635,6 @@
         if (e.start >= vis.start) svg += `<line class="ev-line" x1="${x1.toFixed(1)}" x2="${x1.toFixed(1)}" y1="${T}" y2="${H - B}"/>`;
         texts.push({ x: x1 + 4, y: T + 24, cls: 'ev-lbl', text: `★ ${e.title}` });
       }
-      // Seuil du rush (vue sur une journée)
-      if (span <= 1.5 * DAY && rushThr < maxY) {
-        svg += `<line class="thr" x1="${L}" x2="${W - R}" y1="${y(rushThr).toFixed(1)}" y2="${y(rushThr).toFixed(1)}"/>`;
-        texts.push({ x: W - R - 2, y: y(rushThr) - 4, cls: 'thr-lbl', text: `rush ≥ ${rushThr}`, anchor: 'end' });
-      }
 
       // Repères verticaux aux changements de map (nom affiché seulement s'il y a la place)
       const labeled = [];
@@ -731,8 +720,6 @@
         $('uptime').textContent = '–';
         $('cuts').textContent = '';
       }
-      renderRush();
-
       // Remplissage : le pic par rapport au nombre de places
       if (online.length && maxPlayers) {
         const peak = Math.max(...online.map((x) => x.players));
@@ -994,64 +981,6 @@
       draw();
       document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
     }
-
-    // ---------- Rush ----------
-    let rushThr = 20;
-    try { rushThr = Number(localStorage.getItem('bdsm-rush')) || 20; } catch { /* stockage indisponible */ }
-
-    // Plus longue période continue avec au moins rushThr joueurs entre deux instants
-    function longestRush(from, to) {
-      let best = null, cur = null, prev = null;
-      for (const x of history) {
-        if (x.t < from) continue;
-        if (x.t >= to) break;
-        const ok = x.players !== null && x.players >= rushThr;
-        if (ok && cur && prev && x.t - prev.t <= 30 * 60e3) cur.end = x.t;
-        else if (ok) cur = { start: x.t, end: x.t };
-        else cur = null;
-        if (cur && (!best || cur.end - cur.start > best.end - best.start)) best = { ...cur };
-        prev = x;
-      }
-      return best;
-    }
-
-    const fmtLen = (ms) => { const m = Math.round(ms / 60e3); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
-    const fmtHM = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-    function renderRush() {
-      $('rush-title').textContent = `Rush (≥ ${rushThr})`;
-      const span = vis.end - vis.start;
-      if (span <= 1.5 * DAY) {
-        const r = longestRush(vis.start, vis.end);
-        $('rush').textContent = r ? fmtLen(r.end - r.start) : 'aucun';
-        $('rush-at').textContent = r ? `${fmtHM(r.start)} → ${fmtHM(r.end)}` : `jamais ${rushThr} joueurs`;
-        return;
-      }
-      // Plusieurs jours : durée moyenne du rush par journée, et le plus long
-      const lens = [];
-      let best = null;
-      for (let d = new Date(gameDay(vis.start)); +d < vis.end; d.setDate(d.getDate() + 1)) {
-        const end = new Date(d); end.setDate(end.getDate() + 1);
-        if (!history.some((x) => x.t >= +d && x.t < +end)) continue;
-        const r = longestRush(Math.max(+d, vis.start), Math.min(+end, vis.end));
-        const len = r ? r.end - r.start : 0;
-        lens.push(len);
-        if (r && (!best || len > best.len)) best = { len, t: +d };
-      }
-      if (!lens.length) { $('rush').textContent = '–'; $('rush-at').textContent = ''; return; }
-      $('rush').textContent = `${fmtLen(lens.reduce((a, b) => a + b, 0) / lens.length)}`;
-      $('rush-at').textContent = best
-        ? `par jour · max ${new Date(best.t).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} (${fmtLen(best.len)})`
-        : 'par jour';
-    }
-
-    $('thr').value = rushThr;
-    $('thr').addEventListener('change', () => {
-      rushThr = Math.max(1, Math.round(Number($('thr').value) || 20));
-      $('thr').value = rushThr;
-      try { localStorage.setItem('bdsm-rush', rushThr); } catch { /* stockage indisponible */ }
-      draw();
-    });
 
     // ---------- Tendance (pic de chaque jour + moyenne sur 7 jours) ----------
     let trendDrawn = null;
@@ -1397,20 +1326,17 @@
         }
         const dayRows = [...days].map(([k, pts]) => {
           const on = pts.filter((x) => x.players !== null);
-          const endK = new Date(k); endK.setDate(endK.getDate() + 1);
-          const r = longestRush(k, +endK);
-          const rush = r ? Math.round((r.end - r.start) / 60e3) : 0;
-          if (!on.length) return [excelDate(k), weekday(k), null, null, null, null, pts.length, null];
+          if (!on.length) return [excelDate(k), weekday(k), null, null, null, null, pts.length];
           const max = on.reduce((a, b) => (b.players > a.players ? b : a));
           const avg = on.reduce((a, b) => a + b.players, 0) / on.length;
           return [excelDate(k), weekday(k), max.players, excelDate(max.t), Math.round(avg * 10) / 10,
-            Math.min(...on.map((x) => x.players)), pts.length, rush];
+            Math.min(...on.map((x) => x.players)), pts.length];
         });
         const ws2 = XLSX.utils.aoa_to_sheet([
-          ['Journée (6 h → 6 h)', 'Jour', 'Pic', 'Heure du pic', 'Moyenne', 'Creux', 'Relevés', `Rush ≥ ${rushThr} (minutes)`], ...dayRows]);
+          ['Journée (6 h → 6 h)', 'Jour', 'Pic', 'Heure du pic', 'Moyenne', 'Creux', 'Relevés'], ...dayRows]);
         formatCells(ws2, 0, 'dd/mm/yyyy', dayRows.length);
         formatCells(ws2, 3, 'hh:mm', dayRows.length);
-        ws2['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 6 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 8 }, { wch: 20 }];
+        ws2['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 6 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 8 }];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws1, 'Relevés');
