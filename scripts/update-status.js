@@ -28,7 +28,7 @@ function cleanPlayers(list) {
     } catch (err) {
       console.log(`Liste des joueurs indisponible : ${err.message}`);
     }
-    status = { online: true, players: info.players, maxPlayers: info.maxPlayers, playerList, updatedAt: Date.now() };
+    status = { online: true, players: info.players, maxPlayers: info.maxPlayers, map: info.map, playerList, updatedAt: Date.now() };
   } catch (err) {
     status = { online: false, players: 0, error: err.message, updatedAt: Date.now() };
   }

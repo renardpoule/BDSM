@@ -25,8 +25,8 @@ Le workflow planifié ne tourne que sur la branche par défaut du dépôt.
 
 ## Statistiques
 
-À chaque passage, le nombre de joueurs est ajouté à `history.csv` (colonnes `t` en millisecondes
-et `players`, vide si le serveur était hors ligne). Sur GitHub, ce fichier est gardé dans la
+À chaque passage, le nombre de joueurs est ajouté à `history.csv` (colonnes `t` en millisecondes,
+`players` et `map`, vides si le serveur était hors ligne ; les plus anciennes lignes n'ont pas de map). Sur GitHub, ce fichier est gardé dans la
 branche `data`, qui ne contient qu'un seul commit réécrit à chaque mise à jour.
 
 La page affiche des graphiques par jour, semaine et mois, avec la moyenne, le pic et le creux,
@@ -48,6 +48,11 @@ Sous le graphique :
 
 La carte de chaleur « Affluence par jour et par heure » donne le nombre moyen de joueurs sur les
 4 dernières semaines pour chaque jour et chaque heure, et le meilleur créneau.
+
+La map est enregistrée avec chaque relevé (depuis le 18 octobre 2026) : elle s'affiche sous le
+compteur, les changements de map sont marqués en bleu sur le graphique, et la section « Maps »
+donne pour chaque map le temps passé, la moyenne et le pic de joueurs, ainsi que la liste des
+derniers changements. L'export Excel contient aussi la map de chaque relevé et une feuille « Maps ».
 
 Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le compteur et la courbe du jour.
 

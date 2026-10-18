@@ -32,7 +32,7 @@ async function poll() {
   try {
     const info = await queryInfo(GMOD_HOST, GMOD_PORT);
     const playerList = await queryPlayers(GMOD_HOST, GMOD_PORT).then(cleanPlayers).catch(() => []);
-    status = { online: true, players: info.players, maxPlayers: info.maxPlayers, playerList, updatedAt: Date.now() };
+    status = { online: true, players: info.players, maxPlayers: info.maxPlayers, map: info.map, playerList, updatedAt: Date.now() };
   } catch (err) {
     status = { online: false, players: 0, error: err.message, updatedAt: Date.now() };
   }
