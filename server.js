@@ -3,7 +3,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { queryInfo } = require('./lib/a2s');
+const { queryInfo, queryPlayers } = require('./lib/a2s');
 
 // Configuration (variables d'environnement)
 const GMOD_HOST = process.env.GMOD_HOST || '83.143.117.26';
@@ -14,10 +14,19 @@ const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 5) * 1000;
 const page = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
 let status = { online: false, players: 0 };
 
+// Pseudos non vides, triés par temps de jeu (secondes arrondies)
+function cleanPlayers(list) {
+  return list
+    .filter((p) => p.name)
+    .map((p) => ({ name: p.name, duration: Math.round(p.duration) }))
+    .sort((a, b) => b.duration - a.duration);
+}
+
 async function poll() {
   try {
     const info = await queryInfo(GMOD_HOST, GMOD_PORT);
-    status = { online: true, players: info.players, maxPlayers: info.maxPlayers };
+    const playerList = await queryPlayers(GMOD_HOST, GMOD_PORT).then(cleanPlayers).catch(() => []);
+    status = { online: true, players: info.players, maxPlayers: info.maxPlayers, playerList };
   } catch (err) {
     status = { online: false, players: 0, error: err.message };
   }
