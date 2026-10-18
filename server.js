@@ -16,6 +16,7 @@ const HISTORY_FILE = path.join(__dirname, 'public', 'history.csv');
 const HISTORY_INTERVAL = 5 * 60 * 1000; // un point toutes les 5 minutes, comme sur GitHub Pages
 
 const page = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
+const logo = fs.readFileSync(path.join(__dirname, 'public', 'logo.png'));
 let status = { online: false, players: 0 };
 let lastHistory = 0;
 
@@ -45,6 +46,11 @@ http.createServer((req, res) => {
   if (req.url.startsWith('/history.csv')) {
     res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(fs.existsSync(HISTORY_FILE) ? fs.readFileSync(HISTORY_FILE) : 't,players\n');
+    return;
+  }
+  if (req.url.startsWith('/logo.png')) {
+    res.writeHead(200, { 'Content-Type': 'image/png' });
+    res.end(logo);
     return;
   }
   if (req.url.startsWith('/status.json')) {

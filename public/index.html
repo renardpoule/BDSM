@@ -12,6 +12,16 @@
       font-family: system-ui, sans-serif;
       text-align: center;
     }
+    /* Logo du serveur en fond, très transparent pour garder le texte lisible */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: url('logo.png') center / min(80vw, 80vh) no-repeat;
+      opacity: .12;
+      pointer-events: none;
+    }
     .top { padding: 24px 16px 8px; }
     p { font-size: 1.3rem; margin: 0; }
     #players { font-size: 6rem; font-weight: bold; line-height: 1.1; }
@@ -228,7 +238,7 @@
     }
 
     function niceMax(v) {
-      const steps = [5, 10, 20, 40, 60, 80, 100];
+      const steps = [4, 8, 12, 20, 40, 60, 80, 100]; // divisibles par 4 : graduations entières
       return steps.find((s) => s >= v) || Math.ceil(v / 50) * 50;
     }
 
@@ -254,7 +264,7 @@
       const pts = history.filter((x) => x.t >= p.start && x.t < p.end);
       const online = pts.filter((x) => x.players !== null);
       const data = series(pts, p);
-      const maxY = niceMax(Math.max(5, ...online.map((x) => x.players)));
+      const maxY = niceMax(Math.max(4, ...online.map((x) => x.players)));
       const x = (t) => L + (t - p.start) / (p.end - p.start) * (W - L - R);
       const y = (v) => T + (1 - v / maxY) * (H - T - B);
 
