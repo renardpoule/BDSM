@@ -1,9 +1,11 @@
-// Interroge le serveur GMod et écrit public/status.json (utilisé par GitHub Actions)
+// Interroge le serveur GMod, écrit public/status.json et ajoute un point à public/history.csv
+// (utilisé par GitHub Actions)
 'use strict';
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { queryInfo, queryPlayers } = require('../lib/a2s');
+const { appendPoint } = require('../lib/history');
 
 const GMOD_HOST = process.env.GMOD_HOST || '83.143.117.26';
 const GMOD_PORT = Number(process.env.GMOD_PORT || 27025);
@@ -21,20 +23,17 @@ function cleanPlayers(list) {
   try {
     const info = await queryInfo(GMOD_HOST, GMOD_PORT, 5000);
     let playerList = [];
-    for (let essai = 1; essai <= 1; essai++) {
-      try {
-        const raw = await queryPlayers(GMOD_HOST, GMOD_PORT, 5000);
-        console.log(`Liste des joueurs : ${raw.length} reçus`);
-        playerList = cleanPlayers(raw);
-        break;
-      } catch (err) {
-        console.log(`Liste des joueurs, essai ${essai} : ${err.message}`);
-      }
+    try {
+      playerList = cleanPlayers(await queryPlayers(GMOD_HOST, GMOD_PORT, 3000));
+    } catch (err) {
+      console.log(`Liste des joueurs indisponible : ${err.message}`);
     }
     status = { online: true, players: info.players, maxPlayers: info.maxPlayers, playerList, updatedAt: Date.now() };
   } catch (err) {
     status = { online: false, players: 0, error: err.message, updatedAt: Date.now() };
   }
-  fs.writeFileSync(path.join(__dirname, '..', 'public', 'status.json'), JSON.stringify(status));
+  const publicDir = path.join(__dirname, '..', 'public');
+  fs.writeFileSync(path.join(publicDir, 'status.json'), JSON.stringify(status));
+  appendPoint(path.join(publicDir, 'history.csv'), status);
   console.log(status);
 })();

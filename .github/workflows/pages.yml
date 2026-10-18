@@ -4,16 +4,19 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   push:
+    branches-ignore:
+      - data
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
+# Les lancements passent l'un après l'autre pour ne jamais perdre un point de l'historique
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -26,7 +29,40 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # L'historique est gardé dans la branche "data" (un seul commit, réécrit à chaque fois)
+      - name: Récupérer l'historique
+        run: |
+          set +e
+          git ls-remote --exit-code --heads origin data > /dev/null
+          code=$?
+          set -e
+          if [ "$code" = 0 ]; then
+            git fetch --depth=1 origin data
+            git show FETCH_HEAD:history.csv > public/history.csv
+            echo "LINES_BEFORE=$(wc -l < public/history.csv)" >> "$GITHUB_ENV"
+          elif [ "$code" = 2 ]; then
+            echo "Pas encore d'historique, il sera créé."
+            echo "LINES_BEFORE=0" >> "$GITHUB_ENV"
+          else
+            echo "Impossible de lire la branche data, on s'arrête pour ne rien écraser."
+            exit 1
+          fi
+
       - run: node scripts/update-status.js
+
+      - name: Sauvegarder l'historique
+        run: |
+          test "$(wc -l < public/history.csv)" -gt "$LINES_BEFORE"
+          dir=$(mktemp -d)
+          cp public/history.csv "$dir/"
+          cd "$dir"
+          git init -q -b data
+          git add history.csv
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Historique du nombre de joueurs"
+          git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -22,3 +22,12 @@ et republie la page avec un `status.json` à jour.
 
 Une seule fois : **Settings → Pages → Source : GitHub Actions**.
 Le workflow planifié ne tourne que sur la branche par défaut du dépôt.
+
+## Statistiques
+
+À chaque passage, le nombre de joueurs est ajouté à `history.csv` (colonnes `t` en millisecondes
+et `players`, vide si le serveur était hors ligne). Sur GitHub, ce fichier est gardé dans la
+branche `data`, qui ne contient qu'un seul commit réécrit à chaque mise à jour.
+
+La page affiche des graphiques par jour, semaine et mois, avec la moyenne, le pic et le creux,
+et des flèches pour revenir aux périodes précédentes.

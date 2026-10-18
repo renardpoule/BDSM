@@ -1,3 +1,4 @@
 node_modules/
 .env
 public/status.json
+public/history.csv

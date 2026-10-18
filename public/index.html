@@ -21,6 +21,49 @@
     }
     p { font-size: 1.5rem; margin: 0; }
     #players { font-size: 10rem; font-weight: bold; line-height: 1.1; }
+
+    section { max-width: 760px; margin: 0 auto; padding: 0 16px 48px; }
+    .tabs, .nav { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; }
+    button {
+      background: none;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.on { color: #fff; border-color: #fff; }
+    button:disabled { opacity: .3; cursor: default; }
+    #period { min-width: 220px; font-size: 1.1rem; }
+    .chart { position: relative; }
+    svg { width: 100%; height: 260px; display: block; overflow: visible; }
+    svg .grid { stroke: #222; }
+    svg .axis { fill: #888; font-size: 11px; }
+    svg .line { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
+    svg .area { fill: #fff; opacity: .08; }
+    svg .cross { stroke: #555; }
+    svg .dot { fill: #fff; stroke: #000; stroke-width: 2; }
+    #tip {
+      position: absolute;
+      top: 0;
+      pointer-events: none;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: .85rem;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    #tip b { font-size: 1rem; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+    .stats div { border: 1px solid #222; border-radius: 8px; padding: 10px; }
+    .stats span { display: block; color: #888; font-size: .85rem; }
+    .stats strong { display: block; font-size: 1.8rem; }
+    .stats small { display: block; color: #888; min-height: 1.2em; }
+    #nodata { color: #888; font-size: 1rem; margin-top: 8px; }
+
     ul { list-style: none; margin: 0 auto; padding: 0 16px 48px; max-width: 500px; }
     li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #333; font-size: 1.1rem; }
     li span:first-child { text-align: left; word-break: break-word; }
@@ -32,8 +75,40 @@
     <p>Nombre de joueurs :</p>
     <div id="players">…</div>
   </div>
+
+  <section>
+    <div class="tabs">
+      <button data-view="day" class="on">Jour</button>
+      <button data-view="week">Semaine</button>
+      <button data-view="month">Mois</button>
+    </div>
+    <div class="nav">
+      <button id="prev" aria-label="Période précédente">‹</button>
+      <span id="period"></span>
+      <button id="next" aria-label="Période suivante">›</button>
+    </div>
+    <div class="chart">
+      <svg id="chart" viewBox="0 0 700 260" role="img" aria-label="Nombre de joueurs sur la période"></svg>
+      <div id="tip" hidden></div>
+    </div>
+    <p id="nodata" hidden>Pas encore de données pour cette période.</p>
+    <div class="stats">
+      <div><span>Moyenne</span><strong id="avg">–</strong><small></small></div>
+      <div><span>Pic</span><strong id="max">–</strong><small id="max-at"></small></div>
+      <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
+    </div>
+  </section>
+
   <ul id="list"></ul>
+
   <script>
+    const $ = (id) => document.getElementById(id);
+    const HOUR = 3600e3, DAY = 24 * HOUR;
+    let history = []; // [{ t, players }] — players = null si serveur hors ligne
+    let view = 'day';
+    let offset = 0; // 0 = période en cours, -1 = précédente, etc.
+
+    // ---------- Compteur + liste ----------
     function duree(sec) {
       const h = Math.floor(sec / 3600);
       const m = Math.floor((sec % 3600) / 60);
@@ -43,7 +118,7 @@
     async function refresh() {
       try {
         const s = await (await fetch('status.json?t=' + Date.now())).json();
-        document.getElementById('players').textContent = s.online ? s.players : 'Hors ligne';
+        $('players').textContent = s.online ? s.players : 'Hors ligne';
         const rows = (s.online && s.playerList || []).map((p) => {
           const li = document.createElement('li');
           const name = document.createElement('span');
@@ -53,13 +128,199 @@
           li.append(name, time);
           return li;
         });
-        document.getElementById('list').replaceChildren(...rows);
+        $('list').replaceChildren(...rows);
       } catch {
-        document.getElementById('players').textContent = '?';
+        $('players').textContent = '?';
       }
     }
+
+    async function loadHistory() {
+      try {
+        const csv = await (await fetch('history.csv?t=' + Date.now())).text();
+        history = csv.trim().split('\n').slice(1).map((l) => {
+          const [t, p] = l.split(',');
+          return { t: Number(t), players: p === '' ? null : Number(p) };
+        }).filter((p) => p.t);
+      } catch { /* on garde l'ancien historique */ }
+      draw();
+    }
+
+    // ---------- Périodes ----------
+    function period() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      if (view === 'day') {
+        d.setDate(d.getDate() + offset);
+        const end = new Date(d); end.setDate(end.getDate() + 1);
+        return { start: +d, end: +end, bucket: 0,
+          label: offset === 0 ? "Aujourd'hui" : d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
+      }
+      if (view === 'week') {
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7); // lundi
+        const end = new Date(d); end.setDate(end.getDate() + 7);
+        const last = new Date(end - DAY);
+        const f = (x) => x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        return { start: +d, end: +end, bucket: HOUR,
+          label: offset === 0 ? 'Cette semaine' : `${f(d)} – ${f(last)}` };
+      }
+      d.setDate(1);
+      d.setMonth(d.getMonth() + offset);
+      const end = new Date(d); end.setMonth(end.getMonth() + 1);
+      const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return { start: +d, end: +end, bucket: 4 * HOUR, label: label[0].toUpperCase() + label.slice(1) };
+    }
+
+    // Moyenne par tranche (semaine : 1 h, mois : 4 h). Le jour garde chaque relevé.
+    function series(pts, p) {
+      if (!p.bucket) return pts.map((x) => ({ t: x.t, v: x.players }));
+      const sums = new Map();
+      for (const x of pts) {
+        if (x.players === null) continue;
+        const k = p.start + Math.floor((x.t - p.start) / p.bucket) * p.bucket;
+        const s = sums.get(k) || { sum: 0, n: 0 };
+        s.sum += x.players; s.n++;
+        sums.set(k, s);
+      }
+      const out = [];
+      for (let k = p.start; k < p.end; k += p.bucket) {
+        const s = sums.get(k);
+        out.push({ t: k + p.bucket / 2, v: s ? Math.round(s.sum / s.n * 10) / 10 : null });
+      }
+      return out;
+    }
+
+    function niceMax(v) {
+      const steps = [5, 10, 20, 40, 60, 80, 100];
+      return steps.find((s) => s >= v) || Math.ceil(v / 50) * 50;
+    }
+
+    function fmtWhen(t) {
+      const d = new Date(t);
+      const h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      return view === 'day' ? `à ${h}` : `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ${h}`;
+    }
+
+    // ---------- Graphique ----------
+    const W = 700, H = 260, L = 34, R = 8, T = 10, B = 24;
+    let drawn = null;
+
+    function draw() {
+      const p = period();
+      $('period').textContent = p.label;
+      $('next').disabled = offset >= 0;
+      $('prev').disabled = !history.length || p.start <= history[0].t;
+
+      const pts = history.filter((x) => x.t >= p.start && x.t < p.end);
+      const online = pts.filter((x) => x.players !== null);
+      const data = series(pts, p);
+      const maxY = niceMax(Math.max(5, ...online.map((x) => x.players)));
+      const x = (t) => L + (t - p.start) / (p.end - p.start) * (W - L - R);
+      const y = (v) => T + (1 - v / maxY) * (H - T - B);
+
+      let svg = '';
+      for (let i = 0; i <= 4; i++) {
+        const v = maxY * i / 4;
+        svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>` +
+               `<text class="axis" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+      }
+      for (const [t, label] of ticks(p)) {
+        svg += `<text class="axis" x="${x(t)}" y="${H - 6}" text-anchor="middle">${label}</text>`;
+      }
+
+      // Coupure de la courbe si le serveur était hors ligne ou si des relevés manquent (> 30 min)
+      const gap = p.bucket || 30 * 60e3;
+      let line = '', area = '', run = [];
+      const flush = () => {
+        if (run.length) {
+          line += run.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('');
+          area += `M${x(run[0].t).toFixed(1)},${y(0)}` + run.map((d) => `L${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('') +
+                  `L${x(run[run.length - 1].t).toFixed(1)},${y(0)}Z`;
+        }
+        run = [];
+      };
+      for (const d of data) {
+        if (d.v === null || (run.length && d.t - run[run.length - 1].t > gap + 1)) flush();
+        if (d.v !== null) run.push(d);
+      }
+      flush();
+      svg += `<path class="area" d="${area}"/><path class="line" d="${line}"/>` +
+             `<g id="hover" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle class="dot" r="4"/></g>`;
+      $('chart').innerHTML = svg;
+      drawn = { data: data.filter((d) => d.v !== null), x, y };
+
+      $('nodata').hidden = online.length > 0;
+      if (online.length) {
+        const avg = online.reduce((s, d) => s + d.players, 0) / online.length;
+        const max = online.reduce((a, b) => (b.players > a.players ? b : a));
+        const min = online.reduce((a, b) => (b.players < a.players ? b : a));
+        $('avg').textContent = avg.toFixed(1).replace('.', ',');
+        $('max').textContent = max.players;
+        $('max-at').textContent = fmtWhen(max.t);
+        $('min').textContent = min.players;
+        $('min-at').textContent = fmtWhen(min.t);
+      } else {
+        for (const id of ['avg', 'max', 'min']) $(id).textContent = '–';
+        $('max-at').textContent = $('min-at').textContent = '';
+      }
+    }
+
+    function ticks(p) {
+      const out = [];
+      if (view === 'day') {
+        for (let h = 0; h <= 24; h += 3) out.push([p.start + h * HOUR, `${h}h`]);
+      } else if (view === 'week') {
+        ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].forEach((d, i) => out.push([p.start + (i + 0.5) * DAY, d]));
+      } else {
+        const d = new Date(p.start);
+        while (+d < p.end) {
+          if ([1, 5, 10, 15, 20, 25].includes(d.getDate())) out.push([+d + DAY / 2, d.getDate()]);
+          d.setDate(d.getDate() + 1);
+        }
+      }
+      return out;
+    }
+
+    // Survol : ligne verticale + valeur la plus proche
+    $('chart').addEventListener('pointermove', (e) => {
+      if (!drawn || !drawn.data.length) return;
+      const box = $('chart').getBoundingClientRect();
+      const mx = (e.clientX - box.left) / box.width * W;
+      const d = drawn.data.reduce((a, b) => (Math.abs(drawn.x(b.t) - mx) < Math.abs(drawn.x(a.t) - mx) ? b : a));
+      const cx = drawn.x(d.t), cy = drawn.y(d.v);
+      const g = $('hover');
+      g.setAttribute('visibility', 'visible');
+      g.querySelector('line').setAttribute('x1', cx);
+      g.querySelector('line').setAttribute('x2', cx);
+      g.querySelector('circle').setAttribute('cx', cx);
+      g.querySelector('circle').setAttribute('cy', cy);
+      const when = new Date(d.t);
+      const label = view === 'day'
+        ? when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : `${when.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}, ${view === 'week' ? `moy. ${when.getHours()}h–${when.getHours() + 1}h` : 'moy. sur 4 h'}`;
+      const tip = $('tip');
+      tip.innerHTML = `<b>${String(d.v).replace('.', ',')}</b> joueurs<br>${label}`;
+      tip.style.left = `${Math.min(Math.max(cx / W * box.width, 70), box.width - 70)}px`;
+      tip.hidden = false;
+    });
+    $('chart').addEventListener('pointerleave', () => {
+      $('tip').hidden = true;
+      const g = $('hover');
+      if (g) g.setAttribute('visibility', 'hidden');
+    });
+
+    document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o === b));
+      view = b.dataset.view;
+      offset = 0;
+      draw();
+    }));
+    $('prev').addEventListener('click', () => { offset--; draw(); });
+    $('next').addEventListener('click', () => { offset++; draw(); });
+
     refresh();
+    loadHistory();
     setInterval(refresh, 30000);
+    setInterval(loadHistory, 5 * 60000);
   </script>
 </body>
 </html>
