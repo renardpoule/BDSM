@@ -1,0 +1,17 @@
+name: Diagnostic liste des joueurs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/diag-players.js
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/diag-players.js
