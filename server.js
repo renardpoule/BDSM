@@ -6,8 +6,8 @@ const path = require('node:path');
 const { queryInfo } = require('./lib/a2s');
 
 // Configuration (variables d'environnement)
-const GMOD_HOST = process.env.GMOD_HOST || '127.0.0.1';
-const GMOD_PORT = Number(process.env.GMOD_PORT || 27015);
+const GMOD_HOST = process.env.GMOD_HOST || '83.143.117.26';
+const GMOD_PORT = Number(process.env.GMOD_PORT || 27025);
 const PORT = Number(process.env.PORT || 3000);
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 5) * 1000;
 

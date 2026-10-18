@@ -5,12 +5,12 @@ Page noire qui affiche en temps réel le nombre de joueurs d'un serveur Garry's 
 Aucune dépendance, il faut juste Node.js 18+.
 
 ```bash
-GMOD_HOST=1.2.3.4 GMOD_PORT=27015 npm start
+npm start
 ```
 
 Puis ouvrir http://localhost:3000
 
 Variables :
-- `GMOD_HOST` : IP du serveur GMod
-- `GMOD_PORT` : port du serveur (27015 par défaut)
+- `GMOD_HOST` : IP du serveur GMod (83.143.117.26 par défaut, ARKADIA SCP RP)
+- `GMOD_PORT` : port du serveur (27025 par défaut)
 - `PORT` : port du site (3000 par défaut)
