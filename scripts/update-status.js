@@ -20,7 +20,17 @@ function cleanPlayers(list) {
   let status;
   try {
     const info = await queryInfo(GMOD_HOST, GMOD_PORT, 5000);
-    const playerList = await queryPlayers(GMOD_HOST, GMOD_PORT).then(cleanPlayers).catch(() => []);
+    let playerList = [];
+    for (let essai = 1; essai <= 3; essai++) {
+      try {
+        const raw = await queryPlayers(GMOD_HOST, GMOD_PORT, 5000);
+        console.log(`Liste des joueurs : ${raw.length} reçus`);
+        playerList = cleanPlayers(raw);
+        break;
+      } catch (err) {
+        console.log(`Liste des joueurs, essai ${essai} : ${err.message}`);
+      }
+    }
     status = { online: true, players: info.players, maxPlayers: info.maxPlayers, playerList, updatedAt: Date.now() };
   } catch (err) {
     status = { online: false, players: 0, error: err.message, updatedAt: Date.now() };
