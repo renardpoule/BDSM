@@ -37,5 +37,11 @@ et des flèches pour revenir aux périodes précédentes. Les journées vont de 
 - meilleur / pire jour : le pic de joueurs le plus haut / le plus bas ;
 - meilleure / pire semaine et mois : la moyenne des pics de chaque jour la plus haute / la plus basse.
 
+On peut zoomer sur le graphique (molette, pincement ou boutons − / +) et se déplacer en glissant :
+l'échelle s'adapte à la zone visible et la courbe repasse aux relevés détaillés.
+
+En bas de page, la section « Données » génère un fichier Excel avec tous les relevés (date, heure,
+jour, journée de jeu, joueurs, statut) et un résumé par jour (pic, heure du pic, moyenne, creux).
+
 Seuls comptent les jours terminés avec des relevés sur au moins 12 heures, et les semaines / mois
 terminés dont au moins la moitié des jours comptent. Un clic sur un record l'affiche dans le graphique.

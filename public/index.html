@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bureau Des Statistiques Multijoueurs (BDSM)</title>
+  <link rel="icon" href="logo.png">
   <style>
     body {
       margin: 0;
@@ -73,6 +74,12 @@
     .rec strong { font-size: 1.3rem; white-space: nowrap; }
     .rec .val { text-align: right; }
     #rec-empty { color: #888; font-size: .9rem; text-align: center; }
+
+    .data { margin-top: 40px; padding-top: 24px; border-top: 1px solid #262626; }
+    .data h2 { font-size: 1.1rem; margin: 0 0 8px; }
+    .data p { font-size: .9rem; color: #888; margin: 0 0 12px; }
+    .data a { color: #888; font-size: .85rem; }
+    #excel { color: #fff; border-color: #555; padding: 8px 18px; }
     .tabs, .nav { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; }
     button {
       background: none;
@@ -87,7 +94,13 @@
     button:disabled { opacity: .3; cursor: default; }
     #period { min-width: 220px; font-size: 1.1rem; }
     .chart { position: relative; }
-    svg { width: 100%; height: 240px; display: block; overflow: visible; }
+    svg { width: 100%; height: 240px; display: block; overflow: visible; touch-action: pan-y; user-select: none; }
+    svg.zoomed { cursor: grab; }
+    svg.dragging { cursor: grabbing; }
+    .zoom { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 8px; }
+    .zoom button { padding: 2px 12px; white-space: nowrap; }
+    @media (max-width: 600px) { .zoom span { flex-basis: 100%; } }
+    .zoom span { color: #666; font-size: .8rem; }
     svg .grid { stroke: #222; }
     svg .axis { fill: #888; font-size: 11px; }
     svg .line { fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
@@ -143,11 +156,24 @@
       <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
+    <div class="zoom">
+      <button id="zoom-out" aria-label="Dézoomer">−</button>
+      <button id="zoom-in" aria-label="Zoomer">+</button>
+      <button id="zoom-reset" hidden>Tout voir</button>
+      <span id="zoom-hint">molette ou pincer pour zoomer, glisser pour se déplacer</span>
+    </div>
     <p id="nodata" hidden>Pas encore de données pour cette période.</p>
     <div class="stats">
       <div><span>Moyenne</span><strong id="avg">–</strong><small></small></div>
       <div><span>Pic</span><strong id="max">–</strong><small id="max-at"></small></div>
       <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
+    </div>
+
+    <div class="data">
+      <h2>Données</h2>
+      <p id="data-info">Tous les relevés depuis le début de l'historique.</p>
+      <button id="excel">Télécharger les données (Excel)</button>
+      <p style="margin-top: 10px"><a href="history.csv" download="bdsm-historique.csv">ou le fichier brut (CSV)</a></p>
     </div>
   </section>
 
@@ -203,6 +229,10 @@
       } catch { /* on garde l'ancien historique */ }
       draw();
       records();
+      if (history.length) {
+        const since = new Date(history[0].t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        $('data-info').textContent = `${history.length.toLocaleString('fr-FR')} relevés depuis le ${since}.`;
+      }
     }
 
     // ---------- Périodes ----------
@@ -234,21 +264,28 @@
       return { start: +d, end: +end, bucket: 4 * HOUR, label: label[0].toUpperCase() + label.slice(1) };
     }
 
-    // Moyenne par tranche (semaine : 1 h, mois : 4 h). Le jour garde chaque relevé.
-    function series(pts, p) {
-      if (!p.bucket) return pts.map((x) => ({ t: x.t, v: x.players }));
+    // Taille des tranches selon la durée affichée : chaque relevé jusqu'à 1,5 jour,
+    // moyenne par heure jusqu'à 10 jours, moyenne sur 4 h au-delà.
+    function bucketFor(span) {
+      return span <= 1.5 * DAY ? 0 : span <= 10 * DAY ? HOUR : 4 * HOUR;
+    }
+
+    // Tranches alignées sur le début de la période pour qu'elles ne bougent pas quand on se déplace
+    function series(pts, p, vis, bucket) {
+      if (!bucket) return pts.map((x) => ({ t: x.t, v: x.players }));
       const sums = new Map();
       for (const x of pts) {
         if (x.players === null) continue;
-        const k = p.start + Math.floor((x.t - p.start) / p.bucket) * p.bucket;
+        const k = p.start + Math.floor((x.t - p.start) / bucket) * bucket;
         const s = sums.get(k) || { sum: 0, n: 0 };
         s.sum += x.players; s.n++;
         sums.set(k, s);
       }
       const out = [];
-      for (let k = p.start; k < p.end; k += p.bucket) {
+      const first = p.start + Math.floor((vis.start - p.start) / bucket) * bucket;
+      for (let k = first; k < vis.end; k += bucket) {
         const s = sums.get(k);
-        out.push({ t: k + p.bucket / 2, v: s ? Math.round(s.sum / s.n * 10) / 10 : null });
+        out.push({ t: k + bucket / 2, v: s ? Math.round(s.sum / s.n * 10) / 10 : null });
       }
       return out;
     }
@@ -261,13 +298,16 @@
     function fmtWhen(t) {
       const d = new Date(t);
       const h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      return view === 'day' ? `à ${h}` : `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ${h}`;
+      return vis.end - vis.start <= DAY ? `à ${h}` : `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ${h}`;
     }
 
     // ---------- Graphique ----------
     const H = 240, L = 34, R = 8, T = 10, B = 24;
     let W = 700; // largeur réelle du graphique, recalculée à chaque dessin
     let drawn = null;
+    let zoom = null; // { start, end } quand on a zoomé, sinon toute la période
+    let vis = { start: 0, end: 1 }; // zone affichée
+    const MIN_SPAN = 30 * 60e3;
 
     function draw() {
       W = Math.max(280, Math.round($('chart').getBoundingClientRect().width));
@@ -277,11 +317,22 @@
       $('next').disabled = offset >= 0;
       $('prev').disabled = !history.length || p.start <= history[0].t;
 
-      const pts = history.filter((x) => x.t >= p.start && x.t < p.end);
+      vis = zoom || { start: p.start, end: p.end };
+      const span = vis.end - vis.start;
+      const bucket = bucketFor(span);
+      $('zoom-reset').hidden = !zoom;
+      $('zoom-out').disabled = !zoom;
+      $('zoom-in').disabled = span <= MIN_SPAN;
+      $('chart').classList.toggle('zoomed', !!zoom);
+
+      const pts = history.filter((x) => x.t >= vis.start && x.t < vis.end);
       const online = pts.filter((x) => x.players !== null);
-      const data = series(pts, p);
+      // Pour la courbe, un relevé de chaque côté pour qu'elle touche les bords quand on zoome
+      const before = history.filter((x) => x.t < vis.start).pop();
+      const after = history.find((x) => x.t >= vis.end);
+      const data = series([before, ...pts, after].filter(Boolean), p, vis, bucket);
       const maxY = niceMax(Math.max(4, ...online.map((x) => x.players)));
-      const x = (t) => L + (t - p.start) / (p.end - p.start) * (W - L - R);
+      const x = (t) => L + (t - vis.start) / span * (W - L - R);
       const y = (v) => T + (1 - v / maxY) * (H - T - B);
 
       let svg = '';
@@ -290,12 +341,12 @@
         svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>` +
                `<text class="axis" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
       }
-      for (const [t, label] of ticks(p)) {
+      for (const [t, label] of ticks()) {
         svg += `<text class="axis" x="${x(t)}" y="${H - 6}" text-anchor="middle">${label}</text>`;
       }
 
       // Coupure de la courbe si le serveur était hors ligne ou si des relevés manquent (> 30 min)
-      const gap = p.bucket || 30 * 60e3;
+      const gap = bucket || 30 * 60e3;
       let line = '', area = '', run = [];
       const flush = () => {
         if (run.length) {
@@ -310,10 +361,11 @@
         if (d.v !== null) run.push(d);
       }
       flush();
-      svg += `<path class="area" d="${area}"/><path class="line" d="${line}"/>` +
+      svg += `<clipPath id="plot"><rect x="${L}" y="0" width="${W - L - R}" height="${H}"/></clipPath>` +
+             `<g clip-path="url(#plot)"><path class="area" d="${area}"/><path class="line" d="${line}"/></g>` +
              `<g id="hover" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle class="dot" r="4"/></g>`;
       $('chart').innerHTML = svg;
-      drawn = { data: data.filter((d) => d.v !== null), x, y };
+      drawn = { data: data.filter((d) => d.v !== null && d.t >= vis.start && d.t < vis.end), x, y, bucket };
 
       $('nodata').hidden = online.length > 0;
       if (online.length) {
@@ -412,32 +464,35 @@
       b.addEventListener('click', () => {
         view = v;
         offset = p.off;
+        zoom = null;
         document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o.dataset.view === v));
         draw();
       });
       return b;
     }
 
-    function ticks(p) {
+    // Graduations : le plus petit pas qui donne au plus 9 étiquettes (5 sur téléphone)
+    const TICK_STEPS = [5, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 7200].map((m) => m * 60e3);
+
+    function ticks() {
+      const span = vis.end - vis.start;
+      const maxTicks = W < 500 ? 5 : 9;
+      const step = TICK_STEPS.find((st) => span / st + 1 <= maxTicks) || 7 * DAY;
+      const base = period().start; // aligné sur 6 h
       const out = [];
-      if (view === 'day') {
-        const step = W < 500 ? 6 : 3;
-        for (let h = 0; h <= 24; h += step) out.push([p.start + h * HOUR, `${(DAY_START + h) % 24}h`]);
-      } else if (view === 'week') {
-        ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].forEach((d, i) => out.push([p.start + (i + 0.5) * DAY, d]));
-      } else {
-        const d = new Date(p.start);
-        while (+d < p.end) {
-          if ((W < 500 ? [1, 10, 20] : [1, 5, 10, 15, 20, 25]).includes(d.getDate())) out.push([+d + DAY / 2, d.getDate()]);
-          d.setDate(d.getDate() + 1);
-        }
+      for (let t = base + Math.ceil((vis.start - base) / step) * step; t <= vis.end; t += step) {
+        const d = new Date(t);
+        const label = step >= DAY
+          ? d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }).replace('.', '')
+          : d.getMinutes() ? `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}` : `${d.getHours()}h`;
+        out.push([t, label]);
       }
       return out;
     }
 
     // Survol : ligne verticale + valeur la plus proche
     $('chart').addEventListener('pointermove', (e) => {
-      if (!drawn || !drawn.data.length) return;
+      if (!drawn || !drawn.data.length || pointers.size) return;
       const box = $('chart').getBoundingClientRect();
       const mx = (e.clientX - box.left) / box.width * W;
       const d = drawn.data.reduce((a, b) => (Math.abs(drawn.x(b.t) - mx) < Math.abs(drawn.x(a.t) - mx) ? b : a));
@@ -449,9 +504,10 @@
       g.querySelector('circle').setAttribute('cx', cx);
       g.querySelector('circle').setAttribute('cy', cy);
       const when = new Date(d.t);
-      const label = view === 'day'
-        ? when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        : `${when.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}, ${view === 'week' ? `moy. ${when.getHours()}h–${when.getHours() + 1}h` : 'moy. sur 4 h'}`;
+      const date = when.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+      const label = !drawn.bucket
+        ? `${view === 'day' ? '' : date + ', '}${when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+        : `${date}, ${drawn.bucket === HOUR ? `moy. ${when.getHours()}h–${when.getHours() + 1}h` : 'moy. sur 4 h'}`;
       const tip = $('tip');
       tip.innerHTML = `<b>${String(d.v).replace('.', ',')}</b> joueurs<br>${label}`;
       tip.style.left = `${Math.min(Math.max(cx / W * box.width, 70), box.width - 70)}px`;
@@ -463,15 +519,187 @@
       if (g) g.setAttribute('visibility', 'hidden');
     });
 
+    // ---------- Export Excel ----------
+    // SheetJS n'est chargé qu'au clic, pour ne pas alourdir la page.
+    function loadSheetJS() {
+      if (window.XLSX) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        sc.onload = resolve;
+        sc.onerror = () => reject(new Error('Impossible de charger le générateur Excel'));
+        document.head.append(sc);
+      });
+    }
+
+    // Date au format numérique d'Excel (jours depuis 1900), en heure locale
+    const excelDate = (t) => (t - new Date(t).getTimezoneOffset() * 60e3) / DAY + 25569;
+
+    // Début de la journée de jeu (6 h) qui contient l'instant t
+    function gameDay(t) {
+      const d = new Date(t);
+      if (d.getHours() < DAY_START) d.setDate(d.getDate() - 1);
+      d.setHours(DAY_START, 0, 0, 0);
+      return +d;
+    }
+
+    function formatCells(ws, col, fmt, rows) {
+      for (let r = 1; r <= rows; r++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c: col })];
+        if (cell && typeof cell.v === 'number') cell.z = fmt;
+      }
+    }
+
+    async function exportExcel() {
+      const btn = $('excel');
+      btn.disabled = true;
+      btn.textContent = 'Préparation…';
+      try {
+        await loadSheetJS();
+        const weekday = (t) => new Date(t).toLocaleDateString('fr-FR', { weekday: 'long' });
+
+        const rows = history.map((x) => [
+          excelDate(x.t), excelDate(x.t), weekday(x.t), excelDate(gameDay(x.t)),
+          x.players, x.players === null ? 'Hors ligne' : 'En ligne',
+        ]);
+        const ws1 = XLSX.utils.aoa_to_sheet([
+          ['Date', 'Heure', 'Jour', 'Journée de jeu (6 h → 6 h)', 'Joueurs', 'Statut'], ...rows]);
+        formatCells(ws1, 0, 'dd/mm/yyyy', rows.length);
+        formatCells(ws1, 1, 'hh:mm', rows.length);
+        formatCells(ws1, 3, 'dd/mm/yyyy', rows.length);
+        ws1['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 11 }, { wch: 24 }, { wch: 9 }, { wch: 11 }];
+
+        const days = new Map();
+        for (const x of history) {
+          const k = gameDay(x.t);
+          if (!days.has(k)) days.set(k, []);
+          days.get(k).push(x);
+        }
+        const dayRows = [...days].map(([k, pts]) => {
+          const on = pts.filter((x) => x.players !== null);
+          if (!on.length) return [excelDate(k), weekday(k), null, null, null, null, pts.length];
+          const max = on.reduce((a, b) => (b.players > a.players ? b : a));
+          const avg = on.reduce((a, b) => a + b.players, 0) / on.length;
+          return [excelDate(k), weekday(k), max.players, excelDate(max.t), Math.round(avg * 10) / 10,
+            Math.min(...on.map((x) => x.players)), pts.length];
+        });
+        const ws2 = XLSX.utils.aoa_to_sheet([
+          ['Journée (6 h → 6 h)', 'Jour', 'Pic', 'Heure du pic', 'Moyenne', 'Creux', 'Relevés'], ...dayRows]);
+        formatCells(ws2, 0, 'dd/mm/yyyy', dayRows.length);
+        formatCells(ws2, 3, 'hh:mm', dayRows.length);
+        ws2['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 6 }, { wch: 12 }, { wch: 9 }, { wch: 7 }, { wch: 8 }];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws1, 'Relevés');
+        XLSX.utils.book_append_sheet(wb, ws2, 'Par jour');
+        const today = new Date().toLocaleDateString('fr-CA'); // AAAA-MM-JJ
+        XLSX.writeFile(wb, `bdsm-joueurs-${today}.xlsx`);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Télécharger les données (Excel)';
+      }
+    }
+    $('excel').addEventListener('click', exportExcel);
+    if (matchMedia('(pointer: coarse)').matches) $('zoom-hint').textContent = 'pincer pour zoomer, glisser pour se déplacer';
+
+    // ---------- Zoom ----------
+    // Zoome d'un facteur autour de l'instant t (factor < 1 : zoom avant)
+    function zoomAt(t, factor) {
+      const p = period();
+      const span = vis.end - vis.start;
+      const full = p.end - p.start;
+      const next = Math.min(full, Math.max(MIN_SPAN, span * factor));
+      if (next >= full) { zoom = null; draw(); return; }
+      let start = t - (t - vis.start) * next / span;
+      start = Math.min(Math.max(start, p.start), p.end - next);
+      zoom = { start, end: start + next };
+      draw();
+    }
+
+    function panBy(dt) {
+      if (!zoom) return;
+      const p = period();
+      const span = zoom.end - zoom.start;
+      const start = Math.min(Math.max(zoom.start + dt, p.start), p.end - span);
+      zoom = { start, end: start + span };
+      draw();
+    }
+
+    // Instant correspondant à une position horizontale à l'écran
+    function timeAt(clientX) {
+      const box = $('chart').getBoundingClientRect();
+      const px = (clientX - box.left) / box.width * W;
+      const r = Math.min(Math.max((px - L) / (W - L - R), 0), 1);
+      return vis.start + r * (vis.end - vis.start);
+    }
+
+    function hideTip() {
+      $('tip').hidden = true;
+      const g = $('hover');
+      if (g) g.setAttribute('visibility', 'hidden');
+    }
+
+    $('chart').addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(timeAt(e.clientX), Math.exp(e.deltaY * 0.002));
+    }, { passive: false });
+
+    // Glisser (souris ou un doigt) pour se déplacer, pincer (deux doigts) pour zoomer
+    const pointers = new Map();
+    let gesture = null;
+    $('chart').addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      pointers.set(e.pointerId, e.clientX);
+      $('chart').setPointerCapture(e.pointerId);
+      const xs = [...pointers.values()];
+      gesture = { vis: { ...vis }, xs, dist: xs.length > 1 ? Math.abs(xs[0] - xs[1]) : 0 };
+      if (zoom || xs.length > 1) { hideTip(); $('chart').classList.add('dragging'); }
+    });
+    $('chart').addEventListener('pointermove', (e) => {
+      if (!pointers.has(e.pointerId) || !gesture) return;
+      pointers.set(e.pointerId, e.clientX);
+      const xs = [...pointers.values()];
+      const box = $('chart').getBoundingClientRect();
+      const msPerPx = (gesture.vis.end - gesture.vis.start) / (box.width * (W - L - R) / W);
+      if (xs.length > 1 && gesture.dist > 10) {
+        const dist = Math.abs(xs[0] - xs[1]);
+        const center = timeAt((gesture.xs[0] + gesture.xs[1]) / 2);
+        const span = vis.end - vis.start;
+        zoomAt(center, (gesture.vis.end - gesture.vis.start) * gesture.dist / Math.max(dist, 1) / span);
+      } else if (xs.length === 1 && zoom) {
+        const dx = xs[0] - gesture.xs[0];
+        const span = gesture.vis.end - gesture.vis.start;
+        zoom = { start: gesture.vis.start, end: gesture.vis.start + span };
+        panBy(-dx * msPerPx);
+      }
+    });
+    const release = (e) => {
+      pointers.delete(e.pointerId);
+      const xs = [...pointers.values()];
+      gesture = xs.length ? { vis: { ...vis }, xs, dist: 0 } : null;
+      if (!xs.length) $('chart').classList.remove('dragging');
+    };
+    $('chart').addEventListener('pointerup', release);
+    $('chart').addEventListener('pointercancel', release);
+    $('chart').addEventListener('dblclick', () => { zoom = null; draw(); });
+
+    const middle = () => (vis.start + vis.end) / 2;
+    $('zoom-in').addEventListener('click', () => zoomAt(middle(), 0.5));
+    $('zoom-out').addEventListener('click', () => zoomAt(middle(), 2));
+    $('zoom-reset').addEventListener('click', () => { zoom = null; draw(); });
+
     document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
       document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o === b));
       view = b.dataset.view;
       offset = 0;
+      zoom = null;
       draw();
     }));
     window.addEventListener('resize', draw);
-    $('prev').addEventListener('click', () => { offset--; draw(); });
-    $('next').addEventListener('click', () => { offset++; draw(); });
+    $('prev').addEventListener('click', () => { offset--; zoom = null; draw(); });
+    $('next').addEventListener('click', () => { offset++; zoom = null; draw(); });
 
     refresh();
     loadHistory();
