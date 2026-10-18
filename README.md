@@ -30,6 +30,12 @@ et `players`, vide si le serveur était hors ligne). Sur GitHub, ce fichier est 
 branche `data`, qui ne contient qu'un seul commit réécrit à chaque mise à jour.
 
 La page affiche des graphiques par jour, semaine et mois, avec la moyenne, le pic et le creux,
-et des flèches pour revenir aux périodes précédentes. À droite, les records : meilleur et pire
-jour, semaine et mois (en moyenne de joueurs). Seules les périodes terminées et couvertes au moins
-à moitié par des relevés comptent ; un clic sur un record l'affiche dans le graphique.
+et des flèches pour revenir aux périodes précédentes. Les journées vont de 6 h à 6 h
+(le serveur redémarre à 6 h), les semaines et les mois commencent aussi à 6 h.
+
+À droite, les records :
+- meilleur / pire jour : le pic de joueurs le plus haut / le plus bas ;
+- meilleure / pire semaine et mois : la moyenne des pics de chaque jour la plus haute / la plus basse.
+
+Seuls comptent les jours terminés avec des relevés sur au moins 12 heures, et les semaines / mois
+terminés dont au moins la moitié des jours comptent. Un clic sur un record l'affiche dans le graphique.
