@@ -27,14 +27,14 @@
   <script>
     async function refresh() {
       try {
-        const s = await (await fetch('api/status')).json();
+        const s = await (await fetch('status.json?t=' + Date.now())).json();
         document.getElementById('players').textContent = s.online ? s.players : 'Hors ligne';
       } catch {
         document.getElementById('players').textContent = '?';
       }
     }
     refresh();
-    setInterval(refresh, 5000);
+    setInterval(refresh, 30000);
   </script>
 </body>
 </html>

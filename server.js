@@ -24,7 +24,7 @@ async function poll() {
 }
 
 http.createServer((req, res) => {
-  if (req.url === '/api/status') {
+  if (req.url.startsWith('/status.json')) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(status));
     return;
