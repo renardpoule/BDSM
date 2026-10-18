@@ -28,6 +28,12 @@
     .top { padding: 12px 16px 8px; }
     p { font-size: 1.3rem; margin: 0; }
     #players { font-size: 6rem; font-weight: bold; line-height: 1.1; }
+    #fill { color: #888; font-size: .95rem; }
+    .bar { width: 220px; max-width: 70vw; height: 6px; margin: 6px auto 0; background: #222; border-radius: 3px; overflow: hidden; }
+    .bar div { height: 100%; width: 0; background: #ff9800; transition: width .5s; }
+
+    #tv-btn { position: absolute; top: 14px; left: 14px; padding: 4px 12px; font-size: .85rem; }
+    #tv-exit { display: none; }
 
     main { max-width: 860px; margin: 0 auto; padding: 0 16px 48px; }
 
@@ -72,7 +78,8 @@
     .rec span { color: #888; font-size: .85rem; }
     .rec em { font-style: normal; color: #888; font-size: .85rem; display: block; }
     .rec strong { font-size: 1.3rem; white-space: nowrap; }
-    .rec .val { text-align: right; }
+    .rec .val { text-align: right; flex: none; }
+    .rec .val em { white-space: nowrap; }
     #rec-empty { color: #888; font-size: .9rem; text-align: center; }
 
     .data { margin-top: 40px; padding-top: 24px; border-top: 1px solid #262626; }
@@ -120,12 +127,52 @@
       transform: translateX(-50%);
     }
     #tip b { font-size: 1rem; }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-top: 16px; }
     .stats div { border: 1px solid #222; border-radius: 8px; padding: 10px; }
     .stats span { display: block; color: #888; font-size: .85rem; }
     .stats strong { display: block; font-size: 1.8rem; }
     .stats small { display: block; color: #888; min-height: 1.2em; }
     #nodata { color: #888; font-size: 1rem; margin-top: 8px; }
+    svg .prev { fill: none; stroke: #888; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    svg .fc { fill: none; stroke: #ff9800; stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
+    .legend i.fc { border-top: 2px dotted #ff9800; }
+    #forecast { font-size: .95rem; margin-top: 4px; color: #ffb74d; min-height: 1.3em; }
+    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; font-size: .85rem; color: #aaa; margin-top: 6px; }
+    .legend i { display: inline-block; width: 22px; vertical-align: middle; margin-right: 6px; border-top: 2px solid #fff; }
+    .legend i.dash { border-top: 2px dashed #888; }
+    #compare { font-size: .95rem; margin-top: 6px; min-height: 1.3em; }
+    #compare .up { color: #66bb6a; }
+    #compare .down { color: #ef5350; }
+
+    .heat { margin-top: 40px; padding-top: 24px; border-top: 1px solid #262626; }
+    .heat h2 { font-size: 1.1rem; margin: 0 0 4px; }
+    .heat > p { font-size: .9rem; color: #888; margin: 0 0 12px; }
+    #heatmap { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 11px; }
+    #heatmap div { height: 26px; line-height: 26px; border-radius: 3px; overflow: hidden; }
+    #heatmap .lbl { color: #888; background: none; }
+    #heatmap .hr { height: 16px; line-height: 16px; color: #888; overflow: visible; white-space: nowrap; text-align: left; }
+    #heatmap .cell { color: #ddd; }
+    #heatmap .cell.dark { color: #000; }
+    #heatmap .cell.best { outline: 2px solid #fff; outline-offset: -2px; }
+    @media (max-width: 600px) { #heatmap .cell { color: transparent !important; } #heatmap div { height: 20px; } }
+    .heat-legend { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: .8rem; color: #888; margin-top: 10px; }
+    .heat-legend span.grad { width: 160px; height: 10px; border-radius: 5px; background: linear-gradient(to right, rgba(255,152,0,.08), rgba(255,152,0,1)); }
+    #heat-best { font-size: .95rem; margin-top: 10px; }
+
+    /* ---------- Mode écran TV : juste le compteur et la courbe du jour ---------- */
+    body.tv { padding-right: 0; cursor: none; }
+    body.tv::before { right: 0; }
+    body.tv h1 { font-size: 2.2vh; padding-top: 2vh; }
+    body.tv .top p { font-size: 3vh; }
+    body.tv #players { font-size: 24vh; }
+    body.tv #fill { font-size: 2.4vh; }
+    body.tv main { max-width: 94vw; }
+    body.tv svg { height: 42vh; }
+    body.tv svg .axis { font-size: 14px; }
+    body.tv aside, body.tv .tabs, body.tv .nav, body.tv .zoom, body.tv .stats, body.tv .heat,
+    body.tv .data, body.tv #list, body.tv #tv-btn, body.tv #nodata { display: none !important; }
+    body.tv #tv-exit { display: block; position: fixed; top: 12px; right: 12px; opacity: .25; cursor: pointer; }
+    body.tv #tv-exit:hover { opacity: 1; }
 
     ul { list-style: none; margin: 0 auto; padding: 0 16px 48px; max-width: 500px; }
     li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #333; font-size: 1.1rem; }
@@ -134,10 +181,14 @@
   </style>
 </head>
 <body>
+  <button id="tv-btn" title="Plein écran : compteur et courbe du jour">Mode TV</button>
+  <button id="tv-exit">Quitter le mode TV</button>
   <h1>Bureau Des Statistiques Multijoueurs <small>(BDSM)</small></h1>
   <div class="top">
     <p>Nombre de joueurs :</p>
     <div id="players">…</div>
+    <div id="fill"></div>
+    <div class="bar"><div id="fill-bar"></div></div>
   </div>
 
   <main>
@@ -156,6 +207,9 @@
       <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
+    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span></div>
+    <p id="compare"></p>
+    <p id="forecast"></p>
     <div class="zoom">
       <button id="zoom-out" aria-label="Dézoomer">−</button>
       <button id="zoom-in" aria-label="Zoomer">+</button>
@@ -167,6 +221,16 @@
       <div><span>Moyenne</span><strong id="avg">–</strong><small></small></div>
       <div><span>Pic</span><strong id="max">–</strong><small id="max-at"></small></div>
       <div><span>Creux</span><strong id="min">–</strong><small id="min-at"></small></div>
+      <div><span>En ligne</span><strong id="uptime">–</strong><small id="cuts"></small></div>
+      <div><span>Remplissage</span><strong id="fillrate">–</strong><small id="fillrate-of"></small></div>
+    </div>
+
+    <div class="heat">
+      <h2>Affluence par jour et par heure</h2>
+      <p>Nombre moyen de joueurs sur les 4 dernières semaines (journées de 6 h à 6 h).</p>
+      <div id="heatmap"></div>
+      <div class="heat-legend"><span>0</span><span class="grad"></span><span id="heat-max"></span></div>
+      <p id="heat-best"></p>
     </div>
 
     <div class="data">
@@ -192,6 +256,7 @@
     let history = []; // [{ t, players }] — players = null si serveur hors ligne
     let view = 'day';
     let offset = 0; // 0 = période en cours, -1 = précédente, etc.
+    let maxPlayers = null; // nombre de places du serveur (dernier relevé)
 
     // ---------- Compteur + liste ----------
     function duree(sec) {
@@ -204,6 +269,12 @@
       try {
         const s = await (await fetch('status.json?t=' + Date.now())).json();
         $('players').textContent = s.online ? s.players : 'Hors ligne';
+        const firstMax = !maxPlayers && s.maxPlayers;
+        if (s.maxPlayers) maxPlayers = s.maxPlayers;
+        if (firstMax && history.length) { draw(); records(); } // le remplissage a besoin du nombre de places
+        const rate = s.online && maxPlayers ? s.players / maxPlayers : 0;
+        $('fill').textContent = s.online && maxPlayers ? `sur ${maxPlayers} places · ${Math.round(rate * 100)} % de remplissage` : '';
+        $('fill-bar').style.width = `${Math.min(100, rate * 100)}%`;
         const rows = (s.online && s.playerList || []).map((p) => {
           const li = document.createElement('li');
           const name = document.createElement('span');
@@ -229,6 +300,7 @@
       } catch { /* on garde l'ancien historique */ }
       draw();
       records();
+      heatmap();
       if (history.length) {
         const since = new Date(history[0].t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
         $('data-info').textContent = `${history.length.toLocaleString('fr-FR')} relevés depuis le ${since}.`;
@@ -262,6 +334,59 @@
       const end = new Date(d); end.setMonth(end.getMonth() + 1);
       const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
       return { start: +d, end: +end, bucket: 4 * HOUR, label: label[0].toUpperCase() + label.slice(1) };
+    }
+
+    // Période de comparaison : même jour la semaine d'avant, semaine précédente, mois précédent
+    function prevPeriod(p) {
+      if (view === 'day') {
+        const a = new Date(p.start); a.setDate(a.getDate() - 7);
+        const b = new Date(p.end); b.setDate(b.getDate() - 7);
+        const wd = a.toLocaleDateString('fr-FR', { weekday: 'long' });
+        return { start: +a, end: +b, label: offset === 0 ? `${wd} dernier` : a.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
+      }
+      const q = period(view, offset - 1);
+      return { ...q, label: view === 'week' ? 'la semaine précédente' : q.label.toLowerCase() };
+    }
+
+    // Jour : le pic. Semaine / mois : la moyenne des pics de chaque journée.
+    function peakScore(pts) {
+      const on = pts.filter((x) => x.players !== null);
+      if (!on.length) return null;
+      if (view === 'day') return Math.max(...on.map((x) => x.players));
+      const days = new Map();
+      for (const x of on) days.set(gameDay(x.t), Math.max(days.get(gameDay(x.t)) || 0, x.players));
+      return [...days.values()].reduce((a, b) => a + b, 0) / days.size;
+    }
+
+    // Prévision du reste de la journée : pour chaque quart d'heure, la moyenne des mêmes
+    // quarts d'heure des 4 mêmes jours de la semaine précédents (ex. les 4 derniers samedis).
+    const FC_STEP = 15 * 60e3;
+    function forecast(p) {
+      const now = Date.now();
+      if (view !== 'day' || offset !== 0 || now >= p.end) return null;
+      const sums = new Map();
+      let weeks = 0;
+      for (let k = 1; k <= 4; k++) {
+        const a = new Date(p.start); a.setDate(a.getDate() - 7 * k);
+        const b = new Date(p.end); b.setDate(b.getDate() - 7 * k);
+        const pts = history.filter((x) => x.t >= +a && x.t < +b && x.players !== null);
+        if (pts.length < 48) continue; // au moins ~4 h de relevés ce jour-là
+        weeks++;
+        for (const x of pts) {
+          const slot = Math.floor((x.t - +a) / FC_STEP);
+          const s = sums.get(slot) || { sum: 0, n: 0 };
+          s.sum += x.players; s.n++;
+          sums.set(slot, s);
+        }
+      }
+      if (!weeks) return null;
+      const out = [];
+      const from = Math.floor((now - p.start) / FC_STEP);
+      for (let slot = from; p.start + slot * FC_STEP < p.end; slot++) {
+        const s = sums.get(slot);
+        if (s) out.push({ t: p.start + (slot + 0.5) * FC_STEP, v: Math.round(s.sum / s.n * 10) / 10 });
+      }
+      return out.length ? { data: out, weeks } : null;
     }
 
     // Taille des tranches selon la durée affichée : chaque relevé jusqu'à 1,5 jour,
@@ -302,7 +427,8 @@
     }
 
     // ---------- Graphique ----------
-    const H = 240, L = 34, R = 8, T = 10, B = 24;
+    const L = 34, R = 8, T = 10, B = 24;
+    let H = 240; // hauteur réelle (plus grande en mode TV)
     let W = 700; // largeur réelle du graphique, recalculée à chaque dessin
     let drawn = null;
     let zoom = null; // { start, end } quand on a zoomé, sinon toute la période
@@ -310,7 +436,9 @@
     const MIN_SPAN = 30 * 60e3;
 
     function draw() {
-      W = Math.max(280, Math.round($('chart').getBoundingClientRect().width));
+      const box = $('chart').getBoundingClientRect();
+      W = Math.max(280, Math.round(box.width));
+      H = Math.max(160, Math.round(box.height) || 240);
       $('chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
       const p = period();
       $('period').textContent = p.label;
@@ -331,7 +459,24 @@
       const before = history.filter((x) => x.t < vis.start).pop();
       const after = history.find((x) => x.t >= vis.end);
       const data = series([before, ...pts, after].filter(Boolean), p, vis, bucket);
-      const maxY = niceMax(Math.max(4, ...online.map((x) => x.players)));
+
+      // Période précédente, recalée sur la période affichée
+      const q = prevPeriod(p);
+      const shift = p.start - q.start;
+      const prevPts = history.filter((x) => x.t >= q.start && x.t < q.end && x.t + shift < p.end)
+        .map((x) => ({ t: x.t + shift, players: x.players }));
+      const prevVis = prevPts.filter((x) => x.t >= vis.start && x.t < vis.end);
+      const pb = prevPts.filter((x) => x.t < vis.start).pop();
+      const pa = prevPts.find((x) => x.t >= vis.end);
+      const prevData = series([pb, ...prevVis, pa].filter(Boolean), p, vis, bucket);
+
+      const fc = forecast(p);
+      // La prévision part du dernier relevé pour que les deux courbes se rejoignent
+      const last = pts.filter((x) => x.players !== null).pop();
+      const fcData = fc ? [...(last ? [{ t: last.t, v: last.players }] : []), ...fc.data] : [];
+      const maxY = niceMax(Math.max(4, ...online.map((x) => x.players),
+        ...prevVis.filter((x) => x.players !== null).map((x) => x.players),
+        ...fcData.filter((d) => d.t >= vis.start && d.t < vis.end).map((d) => d.v)));
       const x = (t) => L + (t - vis.start) / span * (W - L - R);
       const y = (v) => T + (1 - v / maxY) * (H - T - B);
 
@@ -347,25 +492,62 @@
 
       // Coupure de la courbe si le serveur était hors ligne ou si des relevés manquent (> 30 min)
       const gap = bucket || 30 * 60e3;
-      let line = '', area = '', run = [];
-      const flush = () => {
-        if (run.length) {
-          line += run.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('');
-          area += `M${x(run[0].t).toFixed(1)},${y(0)}` + run.map((d) => `L${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('') +
-                  `L${x(run[run.length - 1].t).toFixed(1)},${y(0)}Z`;
+      const paths = (list) => {
+        let line = '', area = '', run = [];
+        const flush = () => {
+          if (run.length) {
+            line += run.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('');
+            area += `M${x(run[0].t).toFixed(1)},${y(0)}` + run.map((d) => `L${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('') +
+                    `L${x(run[run.length - 1].t).toFixed(1)},${y(0)}Z`;
+          }
+          run = [];
+        };
+        for (const d of list) {
+          if (d.v === null || (run.length && d.t - run[run.length - 1].t > gap + 1)) flush();
+          if (d.v !== null) run.push(d);
         }
-        run = [];
+        flush();
+        return { line, area };
       };
-      for (const d of data) {
-        if (d.v === null || (run.length && d.t - run[run.length - 1].t > gap + 1)) flush();
-        if (d.v !== null) run.push(d);
-      }
-      flush();
+      const cur = paths(data), prv = paths(prevData);
+      const fcLine = fcData.map((d, i) => `${i ? 'L' : 'M'}${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join('');
       svg += `<clipPath id="plot"><rect x="${L}" y="0" width="${W - L - R}" height="${H}"/></clipPath>` +
-             `<g clip-path="url(#plot)"><path class="area" d="${area}"/><path class="line" d="${line}"/></g>` +
+             `<g clip-path="url(#plot)"><path class="prev" d="${prv.line}"/><path class="fc" d="${fcLine}"/>` +
+             `<path class="area" d="${cur.area}"/><path class="line" d="${cur.line}"/></g>` +
              `<g id="hover" visibility="hidden"><line class="cross" y1="${T}" y2="${H - B}"/><circle class="dot" r="4"/></g>`;
       $('chart').innerHTML = svg;
-      drawn = { data: data.filter((d) => d.v !== null && d.t >= vis.start && d.t < vis.end), x, y, bucket };
+      drawn = { data: data.filter((d) => d.v !== null && d.t >= vis.start && d.t < vis.end), x, y, bucket,
+        prev: prevData.filter((d) => d.v !== null), prevLabel: q.label };
+
+      // Prévision : pic attendu sur le reste de la journée
+      $('leg-fc').hidden = !fc;
+      if (fc) {
+        const peak = fc.data.reduce((a, b) => (b.v > a.v ? b : a));
+        const at = new Date(peak.t - FC_STEP / 2).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const wd = new Date(p.start).toLocaleDateString('fr-FR', { weekday: 'long' });
+        $('forecast').textContent = `Prévision : pic d'environ ${Math.round(peak.v)} joueurs vers ${at} ` +
+          `(d'après ${fc.weeks > 1 ? `les ${fc.weeks} derniers ${wd}s` : `le ${wd} précédent`})`;
+      } else {
+        $('forecast').textContent = '';
+      }
+
+      // Légende + évolution par rapport à la période précédente (jusqu'au même moment)
+      $('leg-cur').textContent = p.label;
+      $('leg-prev').textContent = q.label[0].toUpperCase() + q.label.slice(1);
+      const elapsed = Math.min(Date.now(), p.end) - p.start;
+      const curScore = peakScore(history.filter((x) => x.t >= p.start && x.t < p.start + elapsed));
+      const prevScore = peakScore(history.filter((x) => x.t >= q.start && x.t < q.start + elapsed));
+      const cmp = $('compare');
+      cmp.replaceChildren();
+      if (curScore !== null && prevScore) {
+        const pct = Math.round((curScore - prevScore) / prevScore * 100);
+        const fmt = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+        const what = view === 'day' ? 'pic' : 'moyenne des pics';
+        const span = document.createElement('span');
+        span.className = pct > 0 ? 'up' : pct < 0 ? 'down' : '';
+        span.textContent = `${pct > 0 ? '▲ +' : pct < 0 ? '▼ ' : '= '}${pct} %`;
+        cmp.append(span, ` par rapport à ${q.label} (${what} : ${fmt(curScore)} contre ${fmt(prevScore)}${elapsed < p.end - p.start ? ', à la même heure' : ''})`);
+      }
 
       $('nodata').hidden = online.length > 0;
       if (online.length) {
@@ -380,6 +562,25 @@
       } else {
         for (const id of ['avg', 'max', 'min']) $(id).textContent = '–';
         $('max-at').textContent = $('min-at').textContent = '';
+      }
+
+      // Disponibilité : part des relevés où le serveur répondait, et nombre de coupures
+      if (pts.length) {
+        const cuts = pts.filter((x, i) => x.players === null && (i === 0 ? before && before.players !== null : pts[i - 1].players !== null)).length;
+        $('uptime').textContent = `${String(Math.round(online.length / pts.length * 1000) / 10).replace('.', ',')} %`;
+        $('cuts').textContent = cuts ? `${cuts} coupure${cuts > 1 ? 's' : ''}` : 'aucune coupure';
+      } else {
+        $('uptime').textContent = '–';
+        $('cuts').textContent = '';
+      }
+      // Remplissage : le pic par rapport au nombre de places
+      if (online.length && maxPlayers) {
+        const peak = Math.max(...online.map((x) => x.players));
+        $('fillrate').textContent = `${Math.round(peak / maxPlayers * 100)} %`;
+        $('fillrate-of').textContent = `pic ${peak} / ${maxPlayers} places`;
+      } else {
+        $('fillrate').textContent = '–';
+        $('fillrate-of').textContent = '';
       }
     }
 
@@ -428,6 +629,22 @@
       const box = $('records');
       box.replaceChildren();
       let any = false;
+
+      // Record absolu : le plus de joueurs connectés en même temps depuis le début
+      const on = history.filter((x) => x.players !== null);
+      if (on.length) {
+        const top = on.reduce((a, b) => (b.players > a.players ? b : a));
+        const day = periodsOf('day').find((p) => top.t >= p.start && top.t < p.end);
+        if (day) {
+          any = true;
+          const h3 = document.createElement('h3');
+          h3.textContent = 'Record absolu';
+          const unit = maxPlayers ? `${Math.round(top.players / maxPlayers * 100)} % des places` : 'joueurs';
+          const row = recRow('Le plus de joueurs', { ...day, score: top.players }, 'day', unit);
+          row.querySelector('em').textContent = new Date(top.t).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+          box.append(h3, row);
+        }
+      }
       for (const [v, title, bestLabel, worstLabel, unit, done] of groups) {
         if (!done.length) continue;
         any = true;
@@ -471,6 +688,63 @@
       return b;
     }
 
+    // ---------- Carte de chaleur jour × heure ----------
+    const WEEKDAYS = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
+    const WEEKDAYS_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+    function heatmap() {
+      const since = Date.now() - 28 * DAY;
+      const sum = Array.from({ length: 7 }, () => Array(24).fill(0));
+      const cnt = Array.from({ length: 7 }, () => Array(24).fill(0));
+      for (const x of history) {
+        if (x.t < since || x.players === null) continue;
+        const row = (new Date(gameDay(x.t)).getDay() + 6) % 7; // jour de jeu (6 h → 6 h), lundi = 0
+        const col = (new Date(x.t).getHours() - DAY_START + 24) % 24; // 0 = 6 h
+        sum[row][col] += x.players;
+        cnt[row][col]++;
+      }
+      const avg = sum.map((r, i) => r.map((v, j) => (cnt[i][j] ? v / cnt[i][j] : null)));
+      const max = Math.max(1, ...avg.flat().filter((v) => v !== null));
+      let best = null;
+      avg.forEach((r, i) => r.forEach((v, j) => { if (v !== null && (!best || v > best.v)) best = { i, j, v }; }));
+
+      const cells = [document.createElement('div')];
+      for (let j = 0; j < 24; j++) {
+        const h = document.createElement('div');
+        h.className = 'hr';
+        h.textContent = j % (innerWidth < 600 ? 6 : 3) === 0 ? `${(DAY_START + j) % 24}h` : '';
+        cells.push(h);
+      }
+      avg.forEach((r, i) => {
+        const lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.textContent = WEEKDAYS[i];
+        cells.push(lbl);
+        r.forEach((v, j) => {
+          const c = document.createElement('div');
+          c.className = 'cell';
+          const hour = (DAY_START + j) % 24;
+          if (v === null) {
+            c.style.background = 'repeating-linear-gradient(45deg, #111 0 3px, #000 3px 6px)';
+            c.title = `${WEEKDAYS_LONG[i]} ${hour}h : pas de données`;
+          } else {
+            const a = 0.08 + 0.92 * v / max;
+            c.style.background = `rgba(255, 152, 0, ${a.toFixed(2)})`;
+            if (a > 0.6) c.classList.add('dark');
+            c.textContent = Math.round(v);
+            c.title = `${WEEKDAYS_LONG[i]} ${hour}h–${(hour + 1) % 24}h : ${String(Math.round(v * 10) / 10).replace('.', ',')} joueurs en moyenne`;
+          }
+          if (best && best.i === i && best.j === j) c.classList.add('best');
+          cells.push(c);
+        });
+      });
+      $('heatmap').replaceChildren(...cells);
+      $('heat-max').textContent = Math.round(max);
+      $('heat-best').textContent = best
+        ? `Meilleur créneau : le ${WEEKDAYS_LONG[best.i]} vers ${(DAY_START + best.j) % 24}h (${Math.round(best.v)} joueurs en moyenne)`
+        : 'Pas encore de données.';
+    }
+
     // Graduations : le plus petit pas qui donne au plus 9 étiquettes (5 sur téléphone)
     const TICK_STEPS = [5, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 7200].map((m) => m * 60e3);
 
@@ -510,6 +784,9 @@
         : `${date}, ${drawn.bucket === HOUR ? `moy. ${when.getHours()}h–${when.getHours() + 1}h` : 'moy. sur 4 h'}`;
       const tip = $('tip');
       tip.innerHTML = `<b>${String(d.v).replace('.', ',')}</b> joueurs<br>${label}`;
+      const tol = drawn.bucket ? drawn.bucket / 2 : 10 * 60e3;
+      const pv = drawn.prev.find((q) => Math.abs(q.t - d.t) <= tol);
+      if (pv) tip.append(document.createElement('br'), `${drawn.prevLabel} : ${String(pv.v).replace('.', ',')}`);
       tip.style.left = `${Math.min(Math.max(cx / W * box.width, 70), box.width - 70)}px`;
       tip.hidden = false;
     });
@@ -700,6 +977,33 @@
     window.addEventListener('resize', draw);
     $('prev').addEventListener('click', () => { offset--; zoom = null; draw(); });
     $('next').addEventListener('click', () => { offset++; zoom = null; draw(); });
+
+    // ---------- Mode écran TV ----------
+    function enterTV() {
+      document.body.classList.add('tv');
+      view = 'day'; offset = 0; zoom = null;
+      document.querySelectorAll('.tabs button').forEach((o) => o.classList.toggle('on', o.dataset.view === 'day'));
+      if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+      draw();
+    }
+    function exitTV() {
+      document.body.classList.remove('tv');
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      window.history.replaceState(null, '', location.pathname);
+      draw();
+    }
+    $('tv-btn').addEventListener('click', enterTV);
+    $('tv-exit').addEventListener('click', exitTV);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('tv')) exitTV(); });
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && document.body.classList.contains('tv') && !location.search.includes('tv')) exitTV();
+    });
+    // Lien direct vers le mode TV : ...?tv
+    if (new URLSearchParams(location.search).has('tv')) {
+      document.body.classList.add('tv');
+    }
+    // En mode TV, la journée change à 6 h : on redessine chaque minute
+    setInterval(() => { if (document.body.classList.contains('tv')) draw(); }, 60000);
 
     refresh();
     loadHistory();

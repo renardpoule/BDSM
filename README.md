@@ -40,6 +40,17 @@ et des flèches pour revenir aux périodes précédentes. Les journées vont de 
 On peut zoomer sur le graphique (molette, pincement ou boutons − / +) et se déplacer en glissant :
 l'échelle s'adapte à la zone visible et la courbe repasse aux relevés détaillés.
 
+Sous le graphique :
+- la période précédente en pointillés (même jour la semaine d'avant, semaine ou mois précédent)
+  et l'évolution en % (pic pour un jour, moyenne des pics pour une semaine ou un mois) ;
+- pour aujourd'hui, une prévision du reste de la journée (moyenne des 4 mêmes jours précédents) ;
+- la disponibilité du serveur (% des relevés en ligne, nombre de coupures) et le taux de remplissage.
+
+La carte de chaleur « Affluence par jour et par heure » donne le nombre moyen de joueurs sur les
+4 dernières semaines pour chaque jour et chaque heure, et le meilleur créneau.
+
+Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le compteur et la courbe du jour.
+
 En bas de page, la section « Données » génère un fichier Excel avec tous les relevés (date, heure,
 jour, journée de jeu, joueurs, statut) et un résumé par jour (pic, heure du pic, moyenne, creux).
 
