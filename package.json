@@ -1,0 +1,13 @@
+{
+  "name": "gmod-live-players",
+  "version": "1.0.0",
+  "description": "Petit site qui affiche en temps réel le nombre de joueurs d'un serveur Garry's Mod",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
