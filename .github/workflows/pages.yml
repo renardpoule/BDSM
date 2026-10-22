@@ -14,14 +14,39 @@ permissions:
   pages: write
   id-token: write
 
-# Les lancements passent l'un après l'autre pour ne jamais perdre un point de l'historique
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
+  # Il arrive que GitHub ne trouve jamais de machine pour un lancement : il reste « en attente »
+  # et bloque tous les suivants. Chaque lancement annule donc ceux bloqués depuis plus de 10 minutes.
+  debloquer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Annuler les lancements bloqués
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          limite=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          for etat in queued in_progress; do
+            for id in $(gh api "repos/$REPO/actions/workflows/pages.yml/runs?status=$etat&per_page=50" --jq '.workflow_runs[].id'); do
+              [ "$id" = "${{ github.run_id }}" ] && continue
+              bloques=$(gh api "repos/$REPO/actions/runs/$id/jobs" \
+                --jq "[.jobs[] | select(.status == \"queued\" and (.runner_name // \"\") == \"\" and .created_at < \"$limite\")] | length")
+              if [ "$bloques" -gt 0 ]; then
+                echo "Lancement $id bloqué sans machine depuis plus de 10 minutes : annulation."
+                gh api -X POST "repos/$REPO/actions/runs/$id/cancel" \
+                  || gh api -X POST "repos/$REPO/actions/runs/$id/force-cancel" || true
+              fi
+            done
+          done
+
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Les relevés passent l'un après l'autre pour ne jamais perdre un point de l'historique
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
