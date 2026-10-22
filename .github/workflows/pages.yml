@@ -7,6 +7,11 @@ on:
     branches-ignore:
       - data
   workflow_dispatch:
+    inputs:
+      combler:
+        description: "Combler les trous de l'historique avec des points estimés"
+        type: boolean
+        default: false
 
 permissions:
   actions: write
@@ -74,6 +79,10 @@ jobs:
             echo "Impossible de lire la branche data, on s'arrête pour ne rien écraser."
             exit 1
           fi
+
+      - name: Combler les trous
+        if: inputs.combler
+        run: node scripts/fill-gaps.js
 
       - run: node scripts/update-status.js
 
