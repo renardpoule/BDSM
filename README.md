@@ -23,6 +23,9 @@ et republie la page avec un `status.json` à jour.
 Une seule fois : **Settings → Pages → Source : GitHub Actions**.
 Le workflow planifié ne tourne que sur la branche par défaut du dépôt.
 
+Si GitHub ne trouve pas de machine pour un lancement, celui-ci reste « en attente » et bloque
+les suivants : chaque lancement annule donc ceux qui attendent une machine depuis plus de 10 minutes.
+
 ## Statistiques
 
 À chaque passage, le nombre de joueurs est ajouté à `history.csv` (colonnes `t` en millisecondes,
