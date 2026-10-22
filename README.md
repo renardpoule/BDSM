@@ -29,7 +29,10 @@ les suivants : chaque lancement annule donc ceux qui attendent une machine depui
 ## Statistiques
 
 À chaque passage, le nombre de joueurs est ajouté à `history.csv` (colonnes `t` en millisecondes,
-`players` et `map`, vides si le serveur était hors ligne ; les plus anciennes lignes n'ont pas de map). Sur GitHub, ce fichier est gardé dans la
+`players` et `map`, vides si le serveur était hors ligne ; les plus anciennes lignes n'ont pas de map). Les lignes avec une 4e colonne `estime` sont des points inventés pour combler un trou
+(relevés qui n'ont pas tourné) : lancer le workflow à la main avec « Combler les trous » coché
+ajoute un point toutes les 5 minutes, en ligne droite entre les deux relevés qui encadrent le trou.
+Sur GitHub, ce fichier est gardé dans la
 branche `data`, qui ne contient qu'un seul commit réécrit à chaque mise à jour.
 
 La page affiche des graphiques par jour, semaine et mois, avec la moyenne, le pic et le creux,
