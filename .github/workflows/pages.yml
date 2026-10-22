@@ -34,7 +34,8 @@ jobs:
                 --jq "[.jobs[] | select(.status == \"queued\" and (.runner_name // \"\") == \"\" and .created_at < \"$limite\")] | length")
               if [ "$bloques" -gt 0 ]; then
                 echo "Lancement $id bloqué sans machine depuis plus de 10 minutes : annulation."
-                gh api -X POST "repos/$REPO/actions/runs/$id/cancel" || true
+                gh api -X POST "repos/$REPO/actions/runs/$id/cancel" \
+                  || gh api -X POST "repos/$REPO/actions/runs/$id/force-cancel" || true
               fi
             done
           done
