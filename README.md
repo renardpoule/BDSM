@@ -23,6 +23,10 @@ et republie la page avec un `status.json` à jour.
 Une seule fois : **Settings → Pages → Source : GitHub Actions**.
 Le workflow planifié ne tourne que sur la branche par défaut du dépôt.
 
+Le dernier relevé (`status.json`) et l'historique sont aussi écrits dans la branche `data`, et la page
+les lit directement là (via raw.githubusercontent.com) : le site reste à jour même si GitHub Pages
+arrête de republier la page alors que les déploiements apparaissent « réussis ».
+
 Si GitHub ne trouve pas de machine pour un lancement, celui-ci reste « en attente » et bloque
 les suivants : chaque lancement annule donc ceux qui attendent une machine depuis plus de 10 minutes.
 
