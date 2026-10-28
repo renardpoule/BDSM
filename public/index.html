@@ -400,9 +400,24 @@
       return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
     }
 
+    // Sur GitHub Pages, les relevés sont lus directement dans la branche « data » : le site reste à jour
+    // même quand GitHub ne republie pas la page. En local (ou si la branche est injoignable), fichiers du site.
+    const DATA_URL = location.hostname.endsWith('.github.io')
+      ? `https://raw.githubusercontent.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/data/`
+      : '';
+    async function fetchData(name) {
+      if (DATA_URL) {
+        try {
+          const r = await fetch(DATA_URL + name + '?t=' + Date.now());
+          if (r.ok) return r;
+        } catch { /* repli sur le fichier du site */ }
+      }
+      return fetch(name + '?t=' + Date.now());
+    }
+
     async function refresh() {
       try {
-        const s = await (await fetch('status.json?t=' + Date.now())).json();
+        const s = await (await fetchData('status.json')).json();
         $('players').textContent = s.online ? s.players : 'Hors ligne';
         if (s.updatedAt) { lastUpdate = s.updatedAt; renderUpdated(); }
         const firstMax = !maxPlayers && s.maxPlayers;
@@ -429,7 +444,7 @@
 
     async function loadHistory() {
       try {
-        const csv = await (await fetch('history.csv?t=' + Date.now())).text();
+        const csv = await (await fetchData('history.csv')).text();
         history = csv.trim().split('\n').slice(1).map((l) => {
           const [t, p, m] = l.split(',');
           return { t: Number(t), players: p === '' ? null : Number(p), map: p === '' ? null : m || null };

@@ -61,7 +61,8 @@ jobs:
         with:
           node-version: 22
 
-      # L'historique est gardé dans la branche "data" (un seul commit, réécrit à chaque fois)
+      # L'historique et le dernier relevé sont gardés dans la branche "data" (un seul commit, réécrit à chaque fois).
+      # La page les lit directement là, sans attendre que GitHub Pages republie le site.
       - name: Récupérer l'historique
         run: |
           set +e
@@ -86,14 +87,14 @@ jobs:
 
       - run: node scripts/update-status.js
 
-      - name: Sauvegarder l'historique
+      - name: Sauvegarder l'historique et le relevé
         run: |
           test "$(wc -l < public/history.csv)" -gt "$LINES_BEFORE"
           dir=$(mktemp -d)
-          cp public/history.csv "$dir/"
+          cp public/history.csv public/status.json "$dir/"
           cd "$dir"
           git init -q -b data
-          git add history.csv
+          git add history.csv status.json
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "Historique du nombre de joueurs"
           git push -fq "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
