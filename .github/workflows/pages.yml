@@ -20,8 +20,9 @@ permissions:
   id-token: write
 
 jobs:
-  # Il arrive que GitHub ne trouve jamais de machine pour un lancement : il reste « en attente »
-  # et bloque tous les suivants. Chaque lancement annule donc ceux bloqués depuis plus de 10 minutes.
+  # Il arrive que GitHub ne trouve jamais de machine pour un lancement (« queued »), ou qu'un lancement
+  # reste coincé en « waiting » devant l'environnement github-pages : il bloque alors tous les suivants.
+  # Chaque lancement annule donc ceux bloqués depuis plus de 10 minutes.
   debloquer:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -32,13 +33,13 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           limite=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
-          for etat in queued in_progress; do
+          for etat in queued in_progress waiting; do
             for id in $(gh api "repos/$REPO/actions/workflows/pages.yml/runs?status=$etat&per_page=50" --jq '.workflow_runs[].id'); do
               [ "$id" = "${{ github.run_id }}" ] && continue
               bloques=$(gh api "repos/$REPO/actions/runs/$id/jobs" \
-                --jq "[.jobs[] | select(.status == \"queued\" and (.runner_name // \"\") == \"\" and .created_at < \"$limite\")] | length")
+                --jq "[.jobs[] | select((.status == \"queued\" or .status == \"waiting\") and (.runner_name // \"\") == \"\" and .created_at < \"$limite\")] | length")
               if [ "$bloques" -gt 0 ]; then
-                echo "Lancement $id bloqué sans machine depuis plus de 10 minutes : annulation."
+                echo "Lancement $id bloqué depuis plus de 10 minutes : annulation."
                 gh api -X POST "repos/$REPO/actions/runs/$id/cancel" \
                   || gh api -X POST "repos/$REPO/actions/runs/$id/force-cancel" || true
               fi
