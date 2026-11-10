@@ -41,7 +41,8 @@ jobs:
               if [ "$bloques" -gt 0 ]; then
                 echo "Lancement $id bloqué depuis plus de 10 minutes : annulation."
                 gh api -X POST "repos/$REPO/actions/runs/$id/cancel" \
-                  || gh api -X POST "repos/$REPO/actions/runs/$id/force-cancel" || true
+                  || gh api -X POST "repos/$REPO/actions/runs/$id/force-cancel" \
+                  || gh api -X DELETE "repos/$REPO/actions/runs/$id" || true
               fi
             done
           done
@@ -49,9 +50,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Les relevés passent l'un après l'autre pour ne jamais perdre un point de l'historique
+    # Les relevés passent l'un après l'autre pour ne jamais perdre un point de l'historique.
+    # (Groupe renommé le 10/11/2026 : un lancement fantôme, impossible à annuler, bloquait l'ancien groupe « pages ».)
     concurrency:
-      group: pages
+      group: releves
       cancel-in-progress: false
     environment:
       name: github-pages
