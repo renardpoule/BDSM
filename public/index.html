@@ -469,32 +469,46 @@
     }
 
     // ---------- Record de pic ----------
-    // Le record = le plus haut nombre de joueurs de tout l'historique, sans compter le relevé en cours.
-    // S'il est égalé ou battu, la page passe en thème doré (et des confettis tombent à chaque nouveau palier).
+    // Le record = le plus haut nombre de joueurs de tout l'historique. S'il est égalé ou battu en ce moment,
+    // ou plus tôt dans la journée de jeu en cours (6 h → 6 h), la page passe en thème doré toute la journée,
+    // et des confettis tombent à l'ouverture de la page et à chaque nouveau palier.
     // Pour voir l'effet sans attendre : ajouter ?record à l'adresse.
     let lastStatus = null, celebrated = 0;
     const FORCE_RECORD = new URLSearchParams(location.search).has('record');
     function checkRecord() {
       const s = lastStatus;
-      let rec = null;
-      for (const x of history) {
-        if (x.players === null || x.falseAlarm) continue;
-        if (s && s.updatedAt && Math.abs(x.t - s.updatedAt) < 60e3) continue; // le relevé actuel lui-même
-        if (!rec || x.players > rec.players) rec = x;
+      const now = new Date();
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getHours() < DAY_START ? 1 : 0), DAY_START).getTime();
+      // Meilleur relevé avant aujourd'hui, et meilleur relevé d'aujourd'hui (relevé en direct compris)
+      let before = null, today = null;
+      const pts = history.filter((x) => x.players !== null && !x.falseAlarm && !(s && Math.abs(x.t - s.updatedAt) < 60e3));
+      // Record juste avant le relevé en direct (pour « ancien record »)
+      const prev = pts.reduce((a, x) => (!a || x.players > a.players ? x : a), null);
+      if (s && s.online && s.updatedAt) pts.push({ t: s.updatedAt, players: s.players });
+      for (const x of pts) {
+        if (x.t < dayStart) { if (!before || x.players > before.players) before = x; }
+        else if (!today || x.players > today.players) today = x;
       }
-      const cur = s && s.online ? s.players : null;
-      const on = FORCE_RECORD || (rec && cur !== null && cur > 0 && cur >= rec.players);
+      const on = FORCE_RECORD || (before && today && today.players > 0 && today.players >= before.players);
       document.body.classList.toggle('record', !!on);
       if (!on) return;
-      const beaten = FORCE_RECORD || cur > rec.players;
       const badge = $('record-badge');
-      badge.replaceChildren(beaten ? '🏆 Nouveau record de joueurs !' : '🏆 Record égalé !');
-      if (rec && !FORCE_RECORD) {
-        const when = new Date(rec.t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+      if (FORCE_RECORD) {
+        badge.replaceChildren('🏆 Nouveau record de joueurs !');
+      } else {
+        const cur = s && s.online ? s.players : null;
+        const live = cur !== null && cur >= today.players;
+        const ref = live && prev ? prev : before;
+        const beaten = today.players > ref.players;
+        const hour = new Date(today.t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const old = new Date(ref.t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        badge.replaceChildren(live
+          ? (beaten ? '🏆 Nouveau record de joueurs !' : '🏆 Record égalé !')
+          : `🏆 ${beaten ? 'Record battu' : 'Record égalé'} aujourd'hui : ${today.players} joueurs à ${hour}`);
         badge.append(' ', Object.assign(document.createElement('small'),
-          { textContent: beaten ? `(ancien : ${rec.players}, le ${when})` : `(${rec.players}, comme le ${when})` }));
+          { textContent: beaten ? `(ancien : ${ref.players}, le ${old})` : `(comme le ${old})` }));
       }
-      const level = FORCE_RECORD ? 1 : cur;
+      const level = FORCE_RECORD ? 1 : today.players;
       if (level > celebrated) { celebrated = level; confetti(); }
     }
     function confetti() {

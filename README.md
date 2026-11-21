@@ -96,9 +96,10 @@ Heures de Paris ; `fin` est facultatif. Après l'enregistrement, la page se met 
 l'événement apparaît en violet sur les graphiques, et la section « Événements » compare le pic de
 cette journée à celui des 4 mêmes jours précédents.
 
-Quand le nombre de joueurs égale ou dépasse le record absolu de l'historique, la page passe en thème doré
-(compteur qui brille, badge « Record égalé » / « Nouveau record » avec l'ancien record) et des confettis tombent
-à chaque nouveau palier. Pour voir l'effet sans attendre un record : ajouter `?record` à l'adresse.
+Quand le record absolu de l'historique est égalé ou battu, la page passe en thème doré pour toute la journée
+de jeu (6 h → 6 h) : compteur qui brille, badge « Record égalé » / « Nouveau record » en direct, puis
+« Record battu aujourd'hui : X joueurs à HH:MM » avec l'ancien record. Des confettis tombent à l'ouverture
+de la page et à chaque nouveau palier. Pour voir l'effet sans attendre un record : ajouter `?record` à l'adresse.
 
 Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le compteur et la courbe du jour.
 
