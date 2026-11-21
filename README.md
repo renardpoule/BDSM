@@ -71,6 +71,9 @@ Autres statistiques :
 - **Crashs et disponibilité** : disponibilité sur 7 et 30 jours, nombre de crashs, durée moyenne
   et plus longue coupure, temps moyen entre deux crashs, et la liste des dernières coupures
   (les coupures vers 6 h sont classées « Redémarrage quotidien » et ne comptent pas comme crashs) ;
+  un seul relevé sans réponse n'est un crash que si, avec au moins 5 joueurs avant, il en reste au plus 60 %
+  au relevé suivant : sinon c'est une fausse alerte (relevé raté), remplacée par la moyenne avant / après
+  et ignorée dans les crashs et la disponibilité (réglages `CRASH_MIN_PLAYERS` et `CRASH_RATIO` dans `public/index.html`) ;
   sur les graphiques, chaque coupure apparaît en zone hachurée (rouge : crash, gris : redémarrage) ;
   rien n'est jamais effacé : l'historique complet des coupures reste consultable sur la page
   (rangé par mois, avec les chiffres « depuis le début ») et dans la feuille « Coupures » de l'export Excel ;
@@ -97,6 +100,10 @@ Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le comp
 
 En bas de page, la section « Données » génère un fichier Excel avec tous les relevés (date, heure,
 jour, journée de jeu, joueurs, statut) et un résumé par jour (pic, heure du pic, moyenne, creux).
+
+Journées retirées des stats (problème de relevés) : liste `EXCLUDED_DAYS` dans `public/index.html`
+(actuellement le 9 novembre 2026, de 6 h à 6 h le lendemain). Les relevés restent dans `history.csv`,
+la page les ignore simplement.
 
 Seuls comptent les jours terminés avec des relevés sur au moins 12 heures, et les semaines / mois
 terminés dont au moins la moitié des jours comptent. Un clic sur un record l'affiche dans le graphique.

@@ -310,7 +310,7 @@
 
     <div class="section">
       <h2>Crashs et disponibilité</h2>
-      <p>Une coupure = le serveur ne répond plus à un relevé (précision : 5 minutes). Les coupures vers 6 h sont le redémarrage quotidien et ne comptent pas comme des crashs.</p>
+      <p>Une coupure = le serveur ne répond plus à un relevé (précision : 5 minutes). Les coupures vers 6 h sont le redémarrage quotidien et ne comptent pas comme des crashs. Un seul relevé sans réponse ne compte comme crash que si le nombre de joueurs a nettement chuté après (sinon c'est un relevé raté, pas un crash).</p>
       <div class="cards">
         <div><span>Disponibilité 7 jours</span><strong id="up7">–</strong><small id="up30"></small></div>
         <div><span>Crashs sur 7 jours</span><strong id="crash7">–</strong><small id="crash30"></small></div>
@@ -319,6 +319,7 @@
         <div><span>Dernier crash</span><strong id="crash-last">–</strong><small id="crash-last-at"></small></div>
         <div><span>Depuis le début</span><strong id="crash-all">–</strong><small id="up-all"></small></div>
       </div>
+      <p id="false-alarms" style="color:#888;font-size:.9rem"></p>
       <h3 class="sub">Historique des coupures</h3>
       <label class="opt"><input type="checkbox" id="show-reboots"> Afficher aussi les redémarrages de 6 h</label>
       <div class="scroll"><table class="tbl" id="outages"></table></div>
@@ -448,7 +449,8 @@
         history = csv.trim().split('\n').slice(1).map((l) => {
           const [t, p, m] = l.split(',');
           return { t: Number(t), players: p === '' ? null : Number(p), map: p === '' ? null : m || null };
-        }).filter((p) => p.t);
+        }).filter((p) => p.t && !excludedDay(p.t));
+        ignoreFalseAlarms();
       } catch { /* on garde l'ancien historique */ }
       draw();
       records();
@@ -467,6 +469,43 @@
     // ---------- Périodes ----------
     // Les journées vont de 6 h à 6 h : le serveur redémarre tous les jours à 6 h.
     const DAY_START = 6;
+
+    // Journées retirées des stats (problème de relevés), au format AAAA-MM-JJ : la journée de jeu entière, 6 h → 6 h.
+    const EXCLUDED_DAYS = ['2026-11-09'];
+    const EXCLUDED_RANGES = EXCLUDED_DAYS.map((d) => {
+      const [y, m, j] = d.split('-').map(Number);
+      const start = new Date(y, m - 1, j, DAY_START).getTime();
+      return [start, new Date(y, m - 1, j + 1, DAY_START).getTime()];
+    });
+    function excludedDay(t) {
+      return EXCLUDED_RANGES.some(([a, b]) => t >= a && t < b);
+    }
+
+    // Fausses alertes : le serveur n'a pas répondu à un seul relevé, mais au relevé suivant il y a à peu près
+    // autant de joueurs qu'avant. Un vrai crash éjecte tout le monde : après, il reste beaucoup moins de joueurs.
+    // Une coupure d'un seul relevé n'est donc un crash que si, avec au moins CRASH_MIN_PLAYERS joueurs avant,
+    // il en reste au plus CRASH_RATIO fois autant après. Sinon, le relevé raté est remplacé par la moyenne
+    // avant / après et ne compte ni comme coupure, ni dans la disponibilité.
+    // Une coupure de plusieurs relevés d'affilée (≥ 10 minutes) reste toujours une coupure.
+    const CRASH_MIN_PLAYERS = 5;
+    const CRASH_RATIO = 0.6;
+    let falseAlarms = 0;
+    function ignoreFalseAlarms() {
+      falseAlarms = 0;
+      for (let i = 1; i < history.length - 1; i++) {
+        const prev = history[i - 1], cur = history[i], next = history[i + 1];
+        if (cur.players !== null || prev.players === null || next.players === null) continue;
+        const crash = prev.players >= CRASH_MIN_PLAYERS && next.players <= prev.players * CRASH_RATIO;
+        if (crash) continue;
+        // Relevé quotidien de 6 h : c'est le redémarrage, on le laisse tel quel
+        const d = new Date(cur.t), m = d.getHours() * 60 + d.getMinutes();
+        if (m >= DAY_START * 60 - 15 && m <= DAY_START * 60 + 30) continue;
+        cur.players = Math.round((prev.players + next.players) / 2);
+        cur.map = prev.map;
+        cur.falseAlarm = true;
+        falseAlarms++;
+      }
+    }
 
     function period(v = view, off = offset) {
       const d = new Date();
@@ -1106,6 +1145,9 @@
       $('crash-last-at').textContent = last ? new Date(last.start).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
       // Depuis le début de l'historique : rien n'est jamais effacé
       $('crash-all').textContent = `${list.length} crash${list.length > 1 ? 's' : ''}`;
+      $('false-alarms').textContent = falseAlarms
+        ? `${falseAlarms} fausse${falseAlarms > 1 ? 's' : ''} alerte${falseAlarms > 1 ? 's' : ''} ignorée${falseAlarms > 1 ? 's' : ''} : un seul relevé sans réponse, mais à peu près autant de joueurs juste avant et juste après.`
+        : '';
       $('up-all').textContent = history.length
         ? `${fmtPct(pct(0))} en ligne depuis le ${new Date(history[0].t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
         : '';
