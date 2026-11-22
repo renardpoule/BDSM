@@ -111,9 +111,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pages.yml/enable"
 
+      # La page lit ses données dans la branche data (déjà sauvegardée au-dessus) : si GitHub Pages
+      # rate sa republication (« No artifacts named github-pages »), le relevé n'est pas perdu.
+      # On ne fait donc pas échouer le lancement pour ça, sinon GitHub envoie un mail à chaque fois.
       - uses: actions/configure-pages@v5
+        continue-on-error: true
       - uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
         with:
           path: public
       - id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
