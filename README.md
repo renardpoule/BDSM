@@ -106,6 +106,15 @@ Le bouton « Mode TV » (ou l'adresse `…/?tv`) affiche en plein écran le comp
 En bas de page, la section « Données » génère un fichier Excel avec tous les relevés (date, heure,
 jour, journée de jeu, joueurs, statut) et un résumé par jour (pic, heure du pic, moyenne, creux).
 
+Fermetures prévues du serveur (maintenance) : liste `MAINTENANCES` dans `public/index.html`
+(actuellement du lundi 23 novembre 2026, 6 h, à la réouverture le vendredi 27 novembre). Pendant la fermeture,
+un bandeau jaune et noir s'affiche en haut de la page, la prévision est masquée et les graphiques montrent une
+zone hachurée jaune « Maintenance ». Les relevés de la fermeture sont retirés de toutes les stats (moyennes,
+records, tendance, carte de chaleur, disponibilité, crashs) ; le jour de la réouverture, ils comptent à nouveau
+dès le premier relevé avec au moins un joueur, et le bandeau passe au vert (« le serveur a rouvert à HH:MM »)
+jusqu'à la fin de cette journée. Les jours de fermeture ne comptent pas non plus dans le nombre de jours
+d'une semaine ou d'un mois (règle « au moins la moitié des jours »).
+
 Journées retirées des stats (problème de relevés) : liste `EXCLUDED_DAYS` dans `public/index.html`
 (actuellement le 9 novembre 2026, de 6 h à 6 h le lendemain). Les relevés restent dans `history.csv`,
 la page les ignore simplement.

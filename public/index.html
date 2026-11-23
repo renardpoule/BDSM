@@ -58,7 +58,19 @@
       body.record #players, #record-badge { animation: none; }
       .confetti { display: none; }
     }
-    #tv-btn { position: absolute; top: 14px; left: 14px; padding: 4px 12px; font-size: .85rem; }
+    #tv-btn { position: absolute; top: calc(var(--banner-h, 0px) + 14px); left: 14px; padding: 4px 12px; font-size: .85rem; }
+
+    /* Bandeau de maintenance (fermeture prévue du serveur) */
+    #maint { display: none; position: relative; z-index: 20; padding: 0; color: #000; font-weight: 600;
+      background: #ffc107; border-bottom: 1px solid #000; }
+    #maint.on { display: block; }
+    #maint::before, #maint::after { content: ''; display: block; height: 8px;
+      background: repeating-linear-gradient(-45deg, #111 0 12px, #ffc107 12px 24px); }
+    #maint div { padding: 8px 16px; font-size: 1rem; line-height: 1.35; }
+    #maint small { display: block; font-weight: 500; font-size: .85rem; opacity: .8; }
+    #maint.back { background: #66bb6a; }
+    #maint.back::before, #maint.back::after { display: none; }
+    body.tv #maint div { font-size: 2.4vh; }
     #tv-exit { display: none; }
 
     main { max-width: 860px; margin: 0 auto; padding: 0 16px 48px; }
@@ -166,6 +178,9 @@
     svg .out.reboot { fill: url(#hatch-reboot); }
     svg .out-lbl { fill: #ef5350; font-size: 11px; }
     .legend i.out { border: none; height: 10px; width: 14px; background: repeating-linear-gradient(45deg, #ef5350 0 2px, transparent 2px 5px); }
+    svg .maint { fill: url(#hatch-maint); }
+    svg .maint-lbl { fill: #ffc107; font-size: 11px; font-weight: 600; }
+    .legend i.maint { border: none; height: 10px; width: 14px; background: repeating-linear-gradient(-45deg, #ffc107 0 3px, transparent 3px 6px); }
     svg .hol { fill: #81c784; }
     svg .hol-lbl { fill: #81c784; font-size: 10px; }
     svg .ev { fill: #ce93d8; opacity: .15; }
@@ -273,6 +288,7 @@
   </style>
 </head>
 <body>
+  <div id="maint" role="status"><div></div></div>
   <button id="tv-btn" title="Plein écran : compteur et courbe du jour">Mode TV</button>
   <button id="tv-exit">Quitter le mode TV</button>
   <h1>Bureau Des Statistiques Multijoueurs <small>(BDSM)</small></h1>
@@ -302,7 +318,7 @@
       <svg id="chart" viewBox="0 0 700 240" role="img" aria-label="Nombre de joueurs sur la période"></svg>
       <div id="tip" hidden></div>
     </div>
-    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span><span id="leg-hol" hidden><i class="hol"></i>Vacances / férié</span><span id="leg-ev" hidden><i class="ev"></i>Événement</span><span id="leg-out" hidden><i class="out"></i>Serveur hors ligne</span></div>
+    <div class="legend"><span><i></i><span id="leg-cur"></span></span><span><i class="dash"></i><span id="leg-prev"></span></span><span id="leg-fc" hidden><i class="fc"></i>Prévision</span><span id="leg-hol" hidden><i class="hol"></i>Vacances / férié</span><span id="leg-ev" hidden><i class="ev"></i>Événement</span><span id="leg-out" hidden><i class="out"></i>Serveur hors ligne</span><span id="leg-maint" hidden><i class="maint"></i>Maintenance (hors stats)</span></div>
     <p id="compare"></p>
     <p id="forecast"></p>
     <div class="zoom">
@@ -530,12 +546,15 @@
     async function loadHistory() {
       try {
         const csv = await (await fetchData('history.csv')).text();
-        history = csv.trim().split('\n').slice(1).map((l) => {
+        const raw = csv.trim().split('\n').slice(1).map((l) => {
           const [t, p, m] = l.split(',');
           return { t: Number(t), players: p === '' ? null : Number(p), map: p === '' ? null : m || null };
-        }).filter((p) => p.t && !excludedDay(p.t));
+        }).filter((p) => p.t);
+        findReopenings(raw);
+        history = raw.filter((p) => !excludedDay(p.t));
         ignoreFalseAlarms();
       } catch { /* on garde l'ancien historique */ }
+      maintBanner();
       checkRecord();
       draw();
       records();
@@ -563,8 +582,67 @@
       return [start, new Date(y, m - 1, j + 1, DAY_START).getTime()];
     });
     function excludedDay(t) {
-      return EXCLUDED_RANGES.some(([a, b]) => t >= a && t < b);
+      return EXCLUDED_RANGES.some(([a, b]) => t >= a && t < b) || MAINTENANCE_RANGES.some((m) => t >= m.start && t < m.end);
     }
+
+    // Fermetures prévues du serveur (maintenance), au format AAAA-MM-JJ.
+    // debut : journée de jeu où le serveur ferme (dès 6 h). reouverture : jour où il rouvre.
+    // Pendant la fermeture, un bandeau s'affiche en haut de la page, et les relevés (vides ou à 0)
+    // sont retirés de toutes les stats, comme les EXCLUDED_DAYS. Le jour de la réouverture, les relevés
+    // comptent à nouveau dès qu'un joueur est revenu (l'heure exacte de réouverture n'est pas connue).
+    const MAINTENANCES = [{ debut: '2026-11-23', reouverture: '2026-11-27' }];
+    const MAINTENANCE_RANGES = MAINTENANCES.map((m) => {
+      const at = (d) => { const [y, mo, j] = d.split('-').map(Number); return new Date(y, mo - 1, j, DAY_START).getTime(); };
+      return { start: at(m.debut), reopen: at(m.reouverture), end: Infinity, back: null };
+    });
+    // Fin de chaque fermeture : premier relevé avec au moins un joueur à partir du jour de réouverture
+    function findReopenings(raw) {
+      for (const m of MAINTENANCE_RANGES) {
+        const first = raw.find((x) => x.t >= m.reopen && x.players > 0);
+        m.end = first ? first.t : Infinity;
+        m.back = first ? first.t : null;
+      }
+    }
+    // Journées de jeu entières retirées des stats dans une période (pour ne pas les compter dans le nombre de jours)
+    function excludedDaysIn(p) {
+      let n = 0;
+      for (let d = new Date(p.start); +d < p.end; d.setDate(d.getDate() + 1)) {
+        const a = +d, e = new Date(d); e.setDate(e.getDate() + 1);
+        if (EXCLUDED_RANGES.some(([x, y]) => x <= a && +e <= y) || MAINTENANCE_RANGES.some((m) => m.start <= a && +e <= m.end)) n++;
+      }
+      return n;
+    }
+    // Zones de maintenance visibles entre deux instants (la fermeture en cours s'arrête à maintenant)
+    function maintBands(from, to) {
+      return MAINTENANCE_RANGES.map((m) => ({ start: m.start, end: Math.min(m.end, Date.now()) }))
+        .filter((m) => m.start < to && m.end > from);
+    }
+
+    function maintBanner() {
+      const now = Date.now();
+      const el = $('maint');
+      const fmt = (t, o) => new Date(t).toLocaleDateString('fr-FR', o);
+      // Bandeau jaune pendant la fermeture, puis vert le jour de la réouverture
+      const m = MAINTENANCE_RANGES.find((r) => now >= r.start && (r.back === null || gameDay(r.back) === gameDay(now)));
+      el.classList.toggle('on', !!m);
+      el.classList.toggle('back', !!m && m.back !== null);
+      if (m) {
+        const last = m.reopen - DAY; // dernier jour entier de fermeture
+        const box = el.firstElementChild;
+        if (m.back !== null) {
+          box.textContent = `✅ Fin de la maintenance : le serveur a rouvert à ${fmtHM(m.back)}`;
+          box.append(Object.assign(document.createElement('small'),
+            { textContent: `Les jours de fermeture (du ${fmt(m.start, { weekday: 'long', day: 'numeric' })} au ${fmt(last, { weekday: 'long', day: 'numeric', month: 'long' })}) ne comptent pas dans les statistiques.` }));
+        } else {
+          const when = now >= m.reopen ? "aujourd'hui" : `le ${fmt(m.reopen, { weekday: 'long', day: 'numeric', month: 'long' })}`;
+          box.textContent = `🔧 Serveur en maintenance — réouverture prévue ${when}`;
+          box.append(Object.assign(document.createElement('small'),
+            { textContent: `Fermé du ${fmt(m.start, { weekday: 'long', day: 'numeric' })} au ${fmt(m.reopen, { weekday: 'long', day: 'numeric', month: 'long' })}. Les relevés de ces jours ne comptent pas dans les moyennes, records et autres statistiques.` }));
+        }
+      }
+      document.body.style.setProperty('--banner-h', `${m ? el.offsetHeight : 0}px`);
+    }
+    addEventListener('resize', () => maintBanner());
 
     // Fausses alertes : le serveur n'a pas répondu à un seul relevé, mais au relevé suivant il y a à peu près
     // autant de joueurs qu'avant. Un vrai crash éjecte tout le monde : après, il reste beaucoup moins de joueurs.
@@ -645,6 +723,7 @@
     function forecast(p) {
       const now = Date.now();
       if (view !== 'day' || offset !== 0 || now >= p.end) return null;
+      if (MAINTENANCE_RANGES.some((m) => now >= m.start && now < m.end)) return null; // serveur fermé
       const sums = new Map();
       let weeks = 0;
       for (let k = 1; k <= 4; k++) {
@@ -803,8 +882,17 @@
         svg += `<rect class="hol" x="${x1.toFixed(1)}" y="${T}" width="${(x2 - x1).toFixed(1)}" height="${H - T - B}" opacity="${a}"/>`;
         if (x2 - x1 > 90) texts.push({ x: x1 + 4, y: H - B - 5, cls: 'hol-lbl', text: b.ferie ? `Férié : ${b.ferie}` : `Vacances ${b.zones.join(', ')}` });
       }
+      // Maintenance : zone hachurée jaune, relevés retirés des stats
+      const mbands = maintBands(vis.start, vis.end);
+      $('leg-maint').hidden = !mbands.length;
+      for (const b of mbands) {
+        const x1 = x(Math.max(b.start, vis.start)), x2 = x(Math.min(b.end, vis.end));
+        svg += `<rect class="maint" x="${x1.toFixed(1)}" y="${T}" width="${Math.max(2, x2 - x1).toFixed(1)}" height="${H - T - B}"/>`;
+        if (x2 - x1 > 80) texts.push({ x: (x1 + x2) / 2, y: T + 52, cls: 'maint-lbl', text: '🔧 Maintenance', anchor: 'middle' });
+      }
       // Coupures : zone hachurée entre le dernier relevé en ligne et le retour du serveur
       svg += `<defs>` +
+        `<pattern id="hatch-maint" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(-45)"><rect width="10" height="10" fill="rgba(255,193,7,.05)"/><line x1="0" y1="0" x2="0" y2="10" stroke="#ffc107" stroke-width="3" opacity=".35"/></pattern>` +
         `<pattern id="hatch-crash" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" fill="rgba(239,83,80,.08)"/><line x1="0" y1="0" x2="0" y2="7" stroke="#ef5350" stroke-width="2" opacity=".7"/></pattern>` +
         `<pattern id="hatch-reboot" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#777" stroke-width="2" opacity=".5"/></pattern></defs>`;
       const outs = outages().filter((o) => (o.before ? o.before.t : o.start) < vis.end && (o.end || Date.now()) > vis.start);
@@ -950,7 +1038,8 @@
         for (const p of periodsOf(v)) {
           if (p.end > now) continue;
           const inside = days.filter((d) => d.start >= p.start && d.start < p.end);
-          if (inside.length < Math.round((p.end - p.start) / DAY) / 2) continue;
+          // Les journées retirées des stats (maintenance…) ne comptent pas dans le nombre de jours de la période
+          if (!inside.length || inside.length < (Math.round((p.end - p.start) / DAY) - excludedDaysIn(p)) / 2) continue;
           done.push({ ...p, score: inside.reduce((a, d) => a + d.score, 0) / inside.length });
         }
         groups.push([v, title, best, worst, 'moy. des pics', done]);
@@ -1306,6 +1395,9 @@
       const tx = (t) => L + (t - t0) / (t1 - t0) * (TW - L - R);
       const ty = (v) => T + (1 - v / maxY) * (TH - T - B);
       let out = '';
+      for (const b of maintBands(t0, t1)) {
+        out += `<rect class="maint" x="${tx(Math.max(b.start, t0)).toFixed(1)}" y="${T}" width="${(tx(Math.min(b.end, t1)) - tx(Math.max(b.start, t0))).toFixed(1)}" height="${TH - T - B}"/>`;
+      }
       for (const b of holidayBands(t0, t1)) {
         const a = b.zones.length === 3 || b.ferie ? 0.16 : 0.08;
         out += `<rect class="hol" x="${tx(b.start).toFixed(1)}" y="${T}" width="${(tx(b.end) - tx(b.start)).toFixed(1)}" height="${TH - T - B}" opacity="${a}"/>`;
