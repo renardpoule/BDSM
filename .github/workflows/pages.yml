@@ -24,6 +24,9 @@ jobs:
   # reste coincé en « waiting » devant l'environnement github-pages : il bloque alors tous les suivants.
   # Chaque lancement annule donc ceux bloqués depuis plus de 10 minutes.
   debloquer:
+    # Seule la branche principale a le droit de publier sur GitHub Pages : sur une autre branche
+    # (push d'une branche claude/…), le lancement échouait et GitHub envoyait un mail. On l'ignore donc.
+    if: github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -48,6 +51,9 @@ jobs:
           done
 
   deploy:
+    # Seule la branche principale a le droit de publier sur GitHub Pages : sur une autre branche
+    # (push d'une branche claude/…), le lancement échouait et GitHub envoyait un mail. On l'ignore donc.
+    if: github.event_name == 'schedule' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Les relevés passent l'un après l'autre pour ne jamais perdre un point de l'historique.
